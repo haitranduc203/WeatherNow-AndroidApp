@@ -293,7 +293,9 @@ fun HomeContent(
         ) {
             when (uiState) {
                 is HomeUiState.Loading -> {
-                    WeatherLoadingView(modifier = Modifier.align(Alignment.Center))
+                    com.example.weathernow.presentation.components.HomeScreenSkeleton(
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
                 is HomeUiState.Empty -> {
                     WeatherEmptyView(

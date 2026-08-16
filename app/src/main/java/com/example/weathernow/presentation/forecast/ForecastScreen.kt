@@ -271,7 +271,9 @@ fun ForecastContent(
                 .padding(horizontal = 16.dp)
         ) {
             if (uiState.isLoading) {
-                WeatherLoadingView(modifier = Modifier.align(Alignment.Center))
+                com.example.weathernow.presentation.components.HomeScreenSkeleton(
+                    modifier = Modifier.fillMaxSize()
+                )
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -317,6 +319,7 @@ private fun HourlyTrendChartCard(
 ) {
     val strings = LocalWeatherStrings.current
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault()).withZone(ZoneId.systemDefault())
+    val preferences by com.example.weathernow.presentation.settings.UserPreferencesRepository.preferencesFlow.collectAsState()
 
     GlassCard(
         modifier = modifier.fillMaxWidth(),
@@ -346,7 +349,36 @@ private fun HourlyTrendChartCard(
                     )
                 }
             }
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // 1. Hardware-Accelerated Bézier Temperature Curve
+            com.example.weathernow.presentation.components.TemperatureBezierChart(
+                hourlyList = hourlyList,
+                temperatureUnit = preferences.temperatureUnit
+            )
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            // 2. Precipitation Probability & Volume Chart
+            Text(
+                text = strings.precipitation,
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            com.example.weathernow.presentation.components.PrecipitationBarChart(
+                hourlyList = hourlyList
+            )
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            // 3. Hourly Horizontal Scroller
+            Text(
+                text = "Chi tiết theo giờ",
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(8.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(hourlyList) { hourly ->
                     val rainProb = hourly.precipitationProbabilityPercent ?: 0
@@ -370,7 +402,6 @@ private fun HourlyTrendChartCard(
                             size = 28.dp
                         )
                         Spacer(modifier = Modifier.height(6.dp))
-                        val preferences by com.example.weathernow.presentation.settings.UserPreferencesRepository.preferencesFlow.collectAsState()
                         val formattedHourlyTemp = com.example.weathernow.presentation.util.WeatherUnitsFormatter.formatTemperature(
                             hourly.temperatureCelsius,
                             preferences.temperatureUnit,
