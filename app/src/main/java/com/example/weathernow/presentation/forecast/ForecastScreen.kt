@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.weathernow.domain.model.AppLanguage
+import com.example.weathernow.domain.model.CurrentWeather
 import com.example.weathernow.domain.model.DailyForecast
 import com.example.weathernow.domain.model.HourlyForecast
 import com.example.weathernow.domain.model.WeatherCondition
@@ -67,6 +68,9 @@ import com.example.weathernow.theme.WeatherPrimary
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -94,47 +98,75 @@ data class ForecastDetailUiState(
     val isLoading: Boolean = false
 )
 
-class ForecastViewModel : ViewModel() {
+class ForecastViewModel(
+    private val weatherRepository: com.example.weathernow.domain.repository.WeatherRepository = com.example.weathernow.data.repository.WeatherRepositoryImpl()
+) : ViewModel() {
     private val _uiState = MutableStateFlow(ForecastDetailUiState())
     val uiState: StateFlow<ForecastDetailUiState> = _uiState.asStateFlow()
 
     fun loadForecast(lat: Double, lon: Double, name: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, latitude = lat, longitude = lon, locationName = name)
-            val now = Instant.now()
-            val dummyHourly = (0..23).map { index ->
-                HourlyForecast(
-                    time = now.plusSeconds(index * 3600L),
-                    temperatureCelsius = 24.0 + (index % 6),
-                    condition = when (index % 5) {
-                        0 -> WeatherCondition.CLEAR
-                        1 -> WeatherCondition.PARTLY_CLOUDY
-                        2 -> WeatherCondition.CLOUDY
-                        3 -> WeatherCondition.RAIN
-                        else -> WeatherCondition.CLEAR
-                    },
-                    precipitationProbabilityPercent = (index * 7) % 95
-                )
-            }
 
-            val today = LocalDate.now()
-            val dummyDaily = (0..6).map { day ->
-                DailyForecast(
-                    date = today.plusDays(day.toLong()),
-                    minTemperatureCelsius = 22.0 + (day % 3),
-                    maxTemperatureCelsius = 28.0 + (day % 7),
-                    precipitationProbabilityPercent = if (day == 1 || day == 2) 80 else 10,
-                    sunrise = null,
-                    sunset = null,
-                    condition = if (day == 1 || day == 2) WeatherCondition.RAIN else WeatherCondition.CLEAR
-                )
-            }
+            try {
+                var hourlyData: List<HourlyForecast> = emptyList()
+                var dailyData: List<DailyForecast> = emptyList()
+                var feelsLike = 28.0
+                var windGusts = 15.0
+                var windDir = 90
+                var uv = 5.0
+                var humidity = 65
+                var pressure = 1013.0
+                var sunriseStr = "05:35"
+                var sunsetStr = "18:25"
 
-            _uiState.value = _uiState.value.copy(
-                hourlyList = dummyHourly,
-                dailyList = dummyDaily,
-                isLoading = false
-            )
+                val currentRes = weatherRepository.observeCurrentWeather(lat, lon)
+                    .first { it !is com.example.weathernow.core.common.Resource.Loading }
+                if (currentRes is com.example.weathernow.core.common.Resource.Success) {
+                    val current = currentRes.data
+                    feelsLike = current.feelsLikeCelsius
+                    windGusts = current.windSpeedKmh ?: 15.0
+                    windDir = current.windDirectionDegrees ?: 90
+                    uv = current.uvIndex ?: 5.0
+                    humidity = current.humidityPercent ?: 65
+                    pressure = current.pressureHpa ?: 1013.0
+                }
+
+                val hourlyRes = weatherRepository.observeHourlyForecast(lat, lon)
+                    .first { it !is com.example.weathernow.core.common.Resource.Loading }
+                if (hourlyRes is com.example.weathernow.core.common.Resource.Success) {
+                    hourlyData = hourlyRes.data
+                }
+
+                val dailyRes = weatherRepository.observeDailyForecast(lat, lon)
+                    .first { it !is com.example.weathernow.core.common.Resource.Loading }
+                if (dailyRes is com.example.weathernow.core.common.Resource.Success) {
+                    dailyData = dailyRes.data
+                    val firstDay = dailyData.firstOrNull()
+                    if (firstDay?.sunrise != null) {
+                        sunriseStr = java.time.format.DateTimeFormatter.ofPattern("HH:mm").withZone(java.time.ZoneId.systemDefault()).format(firstDay.sunrise)
+                    }
+                    if (firstDay?.sunset != null) {
+                        sunsetStr = java.time.format.DateTimeFormatter.ofPattern("HH:mm").withZone(java.time.ZoneId.systemDefault()).format(firstDay.sunset)
+                    }
+                }
+
+                _uiState.value = _uiState.value.copy(
+                    hourlyList = hourlyData,
+                    dailyList = dailyData,
+                    feelsLikeCelsius = feelsLike,
+                    windGustsKmh = windGusts,
+                    windDirectionDegrees = windDir,
+                    uvIndex = uv,
+                    humidityPercent = humidity,
+                    pressureHpa = pressure,
+                    sunriseTime = sunriseStr,
+                    sunsetTime = sunsetStr,
+                    isLoading = false
+                )
+            } catch (_: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false)
+            }
         }
     }
 }

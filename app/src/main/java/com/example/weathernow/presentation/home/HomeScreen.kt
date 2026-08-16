@@ -74,6 +74,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -96,7 +99,9 @@ sealed interface HomeUiState {
     ) : HomeUiState
 }
 
-class HomeViewModel : ViewModel() {
+class HomeViewModel(
+    private val weatherRepository: com.example.weathernow.domain.repository.WeatherRepository = com.example.weathernow.data.repository.WeatherRepositoryImpl()
+) : ViewModel() {
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
@@ -104,82 +109,75 @@ class HomeViewModel : ViewModel() {
         loadWeatherData()
     }
 
-    fun loadWeatherData() {
+    fun loadWeatherData(
+        latitude: Double = 21.0285,
+        longitude: Double = 105.8542,
+        locationName: String = "Hanoi, Vietnam"
+    ) {
         viewModelScope.launch {
             _uiState.value = HomeUiState.Loading
-            val dummyLocation = WeatherLocation(
-                id = "current_loc",
-                name = "Hanoi",
-                country = "Vietnam",
-                latitude = 21.0285,
-                longitude = 105.8542
-            )
-            val dummyCurrent = CurrentWeather(
-                temperatureCelsius = 28.0,
-                feelsLikeCelsius = 31.0,
-                humidityPercent = 68,
-                windSpeedKmh = 12.4,
-                windDirectionDegrees = 45,
-                uvIndex = 5.0,
-                precipitationMm = 1.0,
-                pressureHpa = 1012.0,
-                condition = WeatherCondition.PARTLY_CLOUDY,
-                observedAt = Instant.now()
-            )
+            try {
+                weatherRepository.observeCurrentWeather(latitude, longitude).collect { currentRes ->
+                    when (currentRes) {
+                        is com.example.weathernow.core.common.Resource.Loading -> {
+                            if (_uiState.value !is HomeUiState.Success) {
+                                _uiState.value = HomeUiState.Loading
+                            }
+                        }
+                        is com.example.weathernow.core.common.Resource.Success -> {
+                            val currentWeather = currentRes.data
+                            val location = WeatherLocation(
+                                id = "current_loc",
+                                name = locationName,
+                                country = null,
+                                latitude = latitude,
+                                longitude = longitude
+                            )
 
-            val now = Instant.now()
-            val dummyHourly = (0..23).map { hourOffset ->
-                HourlyForecast(
-                    time = now.plusSeconds(hourOffset * 3600L),
-                    temperatureCelsius = 28.0 + (hourOffset % 5) - 2,
-                    condition = if (hourOffset in 12..16) WeatherCondition.CLEAR else WeatherCondition.PARTLY_CLOUDY,
-                    precipitationProbabilityPercent = (hourOffset * 5) % 80
-                )
-            }
+                            var hourlyData: List<HourlyForecast> = emptyList()
+                            var dailyData: List<DailyForecast> = emptyList()
 
-            val today = LocalDate.now()
-            val dummyDaily = (0..6).map { dayOffset ->
-                DailyForecast(
-                    date = today.plusDays(dayOffset.toLong()),
-                    minTemperatureCelsius = 22.0 + (dayOffset % 3),
-                    maxTemperatureCelsius = 30.0 + (dayOffset % 6),
-                    precipitationProbabilityPercent = if (dayOffset == 1 || dayOffset == 2) 70 else 15,
-                    sunrise = null,
-                    sunset = null,
-                    condition = when (dayOffset % 4) {
-                        0 -> WeatherCondition.PARTLY_CLOUDY
-                        1 -> WeatherCondition.RAIN
-                        2 -> WeatherCondition.THUNDERSTORM
-                        else -> WeatherCondition.CLEAR
+                            try {
+                                val hourlyRes = weatherRepository.observeHourlyForecast(latitude, longitude)
+                                    .first { it !is com.example.weathernow.core.common.Resource.Loading }
+                                if (hourlyRes is com.example.weathernow.core.common.Resource.Success) {
+                                    hourlyData = hourlyRes.data
+                                }
+
+                                val dailyRes = weatherRepository.observeDailyForecast(latitude, longitude)
+                                    .first { it !is com.example.weathernow.core.common.Resource.Loading }
+                                if (dailyRes is com.example.weathernow.core.common.Resource.Success) {
+                                    dailyData = dailyRes.data
+                                }
+                            } catch (_: Exception) {}
+
+                            _uiState.value = HomeUiState.Success(
+                                location = location,
+                                currentWeather = currentWeather,
+                                hourlyForecast = hourlyData,
+                                dailyForecast = dailyData,
+                                isOffline = false,
+                                lastUpdatedText = "Updated just now",
+                                isRefreshing = false
+                            )
+                        }
+                        is com.example.weathernow.core.common.Resource.Error -> {
+                            _uiState.value = HomeUiState.Error(currentRes.message)
+                        }
                     }
-                )
+                }
+            } catch (e: Exception) {
+                _uiState.value = HomeUiState.Error(e.message ?: "Failed to load live weather")
             }
-
-            _uiState.value = HomeUiState.Success(
-                location = dummyLocation,
-                currentWeather = dummyCurrent,
-                hourlyForecast = dummyHourly,
-                dailyForecast = dummyDaily,
-                isOffline = false,
-                lastUpdatedText = "Updated 5m ago"
-            )
         }
     }
 
     fun refresh() {
         val currentState = _uiState.value
-        if (currentState is HomeUiState.Success) {
-            viewModelScope.launch {
-                _uiState.value = currentState.copy(isRefreshing = true)
-                delay(800)
-                _uiState.value = currentState.copy(
-                    isRefreshing = false,
-                    lastUpdatedText = "Updated just now"
-                )
-            }
-        } else {
-            loadWeatherData()
-        }
+        val lat = if (currentState is HomeUiState.Success) currentState.location.latitude else 21.0285
+        val lon = if (currentState is HomeUiState.Success) currentState.location.longitude else 105.8542
+        val name = if (currentState is HomeUiState.Success) currentState.location.name else "Hanoi, Vietnam"
+        loadWeatherData(lat, lon, name)
     }
 }
 

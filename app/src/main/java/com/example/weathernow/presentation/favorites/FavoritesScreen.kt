@@ -80,7 +80,9 @@ sealed interface FavoritesUiState {
     data class Error(val message: String) : FavoritesUiState
 }
 
-class FavoritesViewModel : ViewModel() {
+class FavoritesViewModel(
+    private val weatherRepository: com.example.weathernow.domain.repository.WeatherRepository = com.example.weathernow.data.repository.WeatherRepositoryImpl()
+) : ViewModel() {
     private val _uiState = MutableStateFlow<FavoritesUiState>(FavoritesUiState.Loading)
     val uiState: StateFlow<FavoritesUiState> = _uiState.asStateFlow()
 
@@ -91,6 +93,7 @@ class FavoritesViewModel : ViewModel() {
     fun loadFavorites() {
         viewModelScope.launch {
             _uiState.value = FavoritesUiState.Loading
+
             val dummyCurrent = FavoriteItemUiModel(
                 location = WeatherLocation(
                     id = "current",
@@ -106,82 +109,45 @@ class FavoritesViewModel : ViewModel() {
                 maxTemp = 33.0
             )
 
-            val dummyList = listOf(
-                FavoriteItemUiModel(
-                    location = WeatherLocation(
-                        id = "tokyo",
-                        name = "Tokyo",
-                        country = "Japan",
-                        latitude = 35.6762,
-                        longitude = 139.6503,
-                        isFavorite = true
-                    ),
-                    temperature = 19.0,
-                    condition = WeatherCondition.CLEAR,
-                    localTime = "16:30",
-                    minTemp = 15.0,
-                    maxTemp = 22.0
-                ),
-                FavoriteItemUiModel(
-                    location = WeatherLocation(
-                        id = "paris",
-                        name = "Paris",
-                        country = "France",
-                        latitude = 48.8566,
-                        longitude = 2.3522,
-                        isFavorite = true
-                    ),
-                    temperature = 22.0,
-                    condition = WeatherCondition.RAIN,
-                    localTime = "08:30",
-                    minTemp = 17.0,
-                    maxTemp = 24.0
-                ),
-                FavoriteItemUiModel(
-                    location = WeatherLocation(
-                        id = "ny",
-                        name = "New York",
-                        country = "USA",
-                        latitude = 40.7128,
-                        longitude = -74.0060,
-                        isFavorite = true
-                    ),
-                    temperature = 16.0,
-                    condition = WeatherCondition.PARTLY_CLOUDY,
-                    localTime = "02:30",
-                    minTemp = 12.0,
-                    maxTemp = 20.0
-                ),
-                FavoriteItemUiModel(
-                    location = WeatherLocation(
-                        id = "syd",
-                        name = "Sydney",
-                        country = "Australia",
-                        latitude = -33.8688,
-                        longitude = 151.2093,
-                        isFavorite = true
-                    ),
-                    temperature = 24.0,
-                    condition = WeatherCondition.CLEAR,
-                    localTime = "18:30",
-                    minTemp = 19.0,
-                    maxTemp = 28.0
-                )
-            )
+            weatherRepository.observeFavoriteLocations().collect { favLocations ->
+                val items = favLocations.map { loc ->
+                    FavoriteItemUiModel(
+                        location = loc,
+                        temperature = when (loc.name) {
+                            "Tokyo" -> 19.0
+                            "Paris" -> 22.0
+                            "New York" -> 16.0
+                            "Sydney" -> 24.0
+                            else -> 25.0
+                        },
+                        condition = when (loc.name) {
+                            "Tokyo" -> WeatherCondition.CLEAR
+                            "Paris" -> WeatherCondition.RAIN
+                            "New York" -> WeatherCondition.CLOUDY
+                            else -> WeatherCondition.CLEAR
+                        },
+                        localTime = when (loc.name) {
+                            "Tokyo" -> "16:30"
+                            "Paris" -> "08:30"
+                            "New York" -> "02:30"
+                            else -> "18:30"
+                        },
+                        minTemp = 18.0,
+                        maxTemp = 28.0
+                    )
+                }
 
-            _uiState.value = FavoritesUiState.Success(
-                currentLocation = dummyCurrent,
-                favoritesList = dummyList
-            )
+                _uiState.value = FavoritesUiState.Success(
+                    currentLocation = dummyCurrent,
+                    favoritesList = items
+                )
+            }
         }
     }
 
     fun removeFavorite(locationId: String) {
-        val currentState = _uiState.value
-        if (currentState is FavoritesUiState.Success) {
-            _uiState.value = currentState.copy(
-                favoritesList = currentState.favoritesList.filterNot { it.location.id == locationId }
-            )
+        viewModelScope.launch {
+            weatherRepository.removeFavoriteLocation(locationId)
         }
     }
 }

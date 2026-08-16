@@ -77,13 +77,16 @@ data class SearchUiModel(
     val errorMessage: String? = null
 )
 
-class SearchViewModel : ViewModel() {
+class SearchViewModel(
+    private val locationRepository: com.example.weathernow.domain.repository.LocationRepository = com.example.weathernow.data.repository.LocationRepositoryImpl(),
+    private val weatherRepository: com.example.weathernow.domain.repository.WeatherRepository = com.example.weathernow.data.repository.WeatherRepositoryImpl()
+) : ViewModel() {
     private val _uiState = MutableStateFlow(
         SearchUiModel(
             recentSearches = listOf(
-                WeatherLocation(id = "1", name = "Hanoi", country = "Vietnam", latitude = 21.0285, longitude = 105.8542),
-                WeatherLocation(id = "2", name = "Tokyo", country = "Japan", latitude = 35.6762, longitude = 139.6503),
-                WeatherLocation(id = "3", name = "Paris", country = "France", latitude = 48.8566, longitude = 2.3522)
+                WeatherLocation(id = "1581130", name = "Hanoi", country = "Vietnam", adminArea = "Ha Noi", latitude = 21.0285, longitude = 105.8542),
+                WeatherLocation(id = "1850147", name = "Tokyo", country = "Japan", adminArea = "Tokyo", latitude = 35.6762, longitude = 139.6503),
+                WeatherLocation(id = "2988507", name = "Paris", country = "France", adminArea = "Île-de-France", latitude = 48.8566, longitude = 2.3522)
             )
         )
     )
@@ -105,18 +108,25 @@ class SearchViewModel : ViewModel() {
         }
 
         searchJob = viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isSearching = true)
-            delay(350)
-            val mockResults = listOf(
-                WeatherLocation(id = "10", name = "$newQuery City", country = "Sample Country", latitude = 21.0, longitude = 105.8),
-                WeatherLocation(id = "11", name = "$newQuery North", country = "Sample Country", latitude = 21.5, longitude = 105.9),
-                WeatherLocation(id = "12", name = "$newQuery Central", country = "Sample Country", latitude = 20.8, longitude = 105.7)
-            )
-            _uiState.value = _uiState.value.copy(
-                searchResults = mockResults,
-                isSearching = false,
-                errorMessage = null
-            )
+            _uiState.value = _uiState.value.copy(isSearching = true, errorMessage = null)
+            delay(400)
+            when (val result = locationRepository.searchLocations(newQuery)) {
+                is com.example.weathernow.core.common.Resource.Success -> {
+                    _uiState.value = _uiState.value.copy(
+                        searchResults = result.data,
+                        isSearching = false,
+                        errorMessage = null
+                    )
+                }
+                is com.example.weathernow.core.common.Resource.Error -> {
+                    _uiState.value = _uiState.value.copy(
+                        searchResults = emptyList(),
+                        isSearching = false,
+                        errorMessage = result.message
+                    )
+                }
+                is com.example.weathernow.core.common.Resource.Loading -> {}
+            }
         }
     }
 
@@ -125,10 +135,17 @@ class SearchViewModel : ViewModel() {
     }
 
     fun toggleFavorite(location: WeatherLocation) {
-        val updated = _uiState.value.searchResults.map {
-            if (it.id == location.id) it.copy(isFavorite = !it.isFavorite) else it
+        viewModelScope.launch {
+            if (location.isFavorite) {
+                weatherRepository.removeFavoriteLocation(location.id ?: location.name)
+            } else {
+                weatherRepository.addFavoriteLocation(location)
+            }
+            val updated = _uiState.value.searchResults.map {
+                if (it.id == location.id) it.copy(isFavorite = !it.isFavorite) else it
+            }
+            _uiState.value = _uiState.value.copy(searchResults = updated)
         }
-        _uiState.value = _uiState.value.copy(searchResults = updated)
     }
 
     fun removeRecentSearch(location: WeatherLocation) {

@@ -37,22 +37,44 @@ class BaselineViewModelTest {
         Dispatchers.resetMain()
     }
 
+    private val mockRemoteDataSource = object : com.example.weathernow.data.remote.datasource.OpenMeteoRemoteDataSource {
+        override suspend fun getForecast(
+            latitude: Double,
+            longitude: Double,
+            timezone: String,
+            forecastDays: Int
+        ): com.example.weathernow.data.remote.dto.OpenMeteoForecastDto {
+            return com.example.weathernow.core.network.NetworkModule.json.decodeFromString<com.example.weathernow.data.remote.dto.OpenMeteoForecastDto>(com.example.weathernow.data.TestFixtures.FORECAST_JSON)
+        }
+
+        override suspend fun searchLocations(
+            name: String,
+            count: Int,
+            language: String
+        ): com.example.weathernow.data.remote.dto.OpenMeteoGeocodingDto {
+            return com.example.weathernow.core.network.NetworkModule.json.decodeFromString<com.example.weathernow.data.remote.dto.OpenMeteoGeocodingDto>(com.example.weathernow.data.TestFixtures.GEOCODING_JSON)
+        }
+    }
+
+    private fun createMockWeatherRepo() = com.example.weathernow.data.repository.WeatherRepositoryImpl(mockRemoteDataSource)
+    private fun createMockLocationRepo() = com.example.weathernow.data.repository.LocationRepositoryImpl(mockRemoteDataSource)
+
     @Test
     fun homeViewModel_initialState_isSuccessWithWeatherData() = runTest {
-        val viewModel = HomeViewModel()
+        val viewModel = HomeViewModel(weatherRepository = createMockWeatherRepo())
+        testScheduler.advanceUntilIdle()
         val state = viewModel.uiState.value
-        assertTrue(state is HomeUiState.Success)
+        assertTrue("Actual state was: $state", state is HomeUiState.Success)
         val success = state as HomeUiState.Success
-        assertEquals("Hanoi", success.location.name)
-        assertEquals("Vietnam", success.location.country)
-        assertEquals(28.0, success.currentWeather.temperatureCelsius, 0.01)
+        assertEquals("Hanoi, Vietnam", success.location.name)
+        assertEquals(28.4, success.currentWeather.temperatureCelsius, 0.01)
         assertTrue(success.hourlyForecast.isNotEmpty())
         assertTrue(success.dailyForecast.isNotEmpty())
     }
 
     @Test
     fun searchViewModel_queryUpdate_and_clearQuery() = runTest {
-        val viewModel = SearchViewModel()
+        val viewModel = SearchViewModel(locationRepository = createMockLocationRepo(), weatherRepository = createMockWeatherRepo())
         assertEquals("", viewModel.uiState.value.query)
 
         viewModel.onQueryChange("Tokyo")
@@ -64,7 +86,7 @@ class BaselineViewModelTest {
 
     @Test
     fun favoritesViewModel_initialState_hasCurrentAndSavedCities() = runTest {
-        val viewModel = FavoritesViewModel()
+        val viewModel = FavoritesViewModel(weatherRepository = createMockWeatherRepo())
         val state = viewModel.uiState.value
         assertTrue(state is FavoritesUiState.Success)
         val success = state as FavoritesUiState.Success
