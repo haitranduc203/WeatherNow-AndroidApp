@@ -80,6 +80,7 @@ import java.util.Locale
 
 data class ForecastDetailUiState(
     val locationName: String = "Tokyo",
+    val adminArea: String? = null,
     val latitude: Double = 35.6762,
     val longitude: Double = 139.6503,
     val hourlyList: List<HourlyForecast> = emptyList(),
@@ -104,9 +105,15 @@ class ForecastViewModel(
     private val _uiState = MutableStateFlow(ForecastDetailUiState())
     val uiState: StateFlow<ForecastDetailUiState> = _uiState.asStateFlow()
 
-    fun loadForecast(lat: Double, lon: Double, name: String) {
+    fun loadForecast(lat: Double, lon: Double, name: String, adminArea: String? = null) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, latitude = lat, longitude = lon, locationName = name)
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                latitude = lat,
+                longitude = lon,
+                locationName = name,
+                adminArea = adminArea
+            )
 
             try {
                 var hourlyData: List<HourlyForecast> = emptyList()
@@ -179,19 +186,20 @@ fun ForecastScreen(
     latitude: Double,
     longitude: Double,
     locationName: String,
+    adminArea: String? = null,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ForecastViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
-    androidx.compose.runtime.LaunchedEffect(latitude, longitude, locationName) {
-        viewModel.loadForecast(latitude, longitude, locationName)
+    androidx.compose.runtime.LaunchedEffect(latitude, longitude, locationName, adminArea) {
+        viewModel.loadForecast(latitude, longitude, locationName, adminArea)
     }
 
     val uiState by viewModel.uiState.collectAsState()
 
     ForecastContent(
         uiState = uiState,
-        onRefresh = { viewModel.loadForecast(latitude, longitude, locationName) },
+        onRefresh = { viewModel.loadForecast(latitude, longitude, locationName, adminArea) },
         onNavigateBack = onNavigateBack,
         modifier = modifier
     )
@@ -215,11 +223,28 @@ fun ForecastContent(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = strings.forecastDetailTitle(uiState.locationName),
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleMedium
-                    )
+                    val displayTitle = if (uiState.adminArea.isNullOrBlank()) {
+                        uiState.locationName
+                    } else if (uiState.locationName.contains(uiState.adminArea)) {
+                        uiState.locationName
+                    } else {
+                        "${uiState.locationName}, ${uiState.adminArea}"
+                    }
+                    Column {
+                        Text(
+                            text = displayTitle,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = strings.forecastSubtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {

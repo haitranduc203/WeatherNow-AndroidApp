@@ -23,6 +23,7 @@ sealed interface WeatherNavDestination : NavKey {
     data class ForecastDetail(
         val latitude: Double,
         val longitude: Double,
-        val locationName: String
+        val locationName: String,
+        val adminArea: String? = null
     ) : WeatherNavDestination
 }

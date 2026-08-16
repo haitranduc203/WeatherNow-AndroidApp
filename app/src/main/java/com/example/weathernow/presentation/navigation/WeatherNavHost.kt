@@ -99,7 +99,8 @@ fun WeatherNavHost(
                                     WeatherNavDestination.ForecastDetail(
                                         latitude = location.latitude,
                                         longitude = location.longitude,
-                                        locationName = location.name
+                                        locationName = location.name,
+                                        adminArea = location.formattedArea.ifBlank { location.country }
                                     )
                                 )
                             }
@@ -116,7 +117,8 @@ fun WeatherNavHost(
                                     WeatherNavDestination.ForecastDetail(
                                         latitude = location.latitude,
                                         longitude = location.longitude,
-                                        locationName = location.name
+                                        locationName = location.name,
+                                        adminArea = location.formattedArea.ifBlank { location.country }
                                     )
                                 )
                             },
@@ -147,6 +149,7 @@ fun WeatherNavHost(
                             latitude = navEntry.latitude,
                             longitude = navEntry.longitude,
                             locationName = navEntry.locationName,
+                            adminArea = navEntry.adminArea,
                             onNavigateBack = { backStack.removeLastOrNull() }
                         )
                     }
