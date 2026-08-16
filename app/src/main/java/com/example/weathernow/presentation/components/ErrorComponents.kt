@@ -65,9 +65,10 @@ fun OfflineBanner(
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
+                val strings = com.example.weathernow.presentation.util.LocalWeatherStrings.current
                 Column {
                     Text(
-                        text = "Viewing Offline Cached Data",
+                        text = strings.offlineBanner,
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )

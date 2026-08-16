@@ -94,7 +94,7 @@ sealed interface HomeUiState {
         val hourlyForecast: List<HourlyForecast> = emptyList(),
         val dailyForecast: List<DailyForecast> = emptyList(),
         val isOffline: Boolean = false,
-        val lastUpdatedText: String = "Updated 5m ago",
+        val lastUpdatedText: String? = null,
         val isRefreshing: Boolean = false
     ) : HomeUiState
 }
@@ -157,7 +157,7 @@ class HomeViewModel(
                                 hourlyForecast = hourlyData,
                                 dailyForecast = dailyData,
                                 isOffline = false,
-                                lastUpdatedText = "Updated just now",
+                                lastUpdatedText = null,
                                 isRefreshing = false
                             )
                         }
@@ -240,8 +240,13 @@ fun HomeContent(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Column {
+                                val locationTitle = if (uiState.location.country.isNullOrBlank() || uiState.location.name.contains(uiState.location.country!!)) {
+                                    uiState.location.name
+                                } else {
+                                    "${uiState.location.name}, ${uiState.location.country}"
+                                }
                                 Text(
-                                    text = "${uiState.location.name}, ${uiState.location.country ?: ""}",
+                                    text = locationTitle,
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
@@ -251,7 +256,7 @@ fun HomeContent(
                                     modifier = Modifier.padding(top = 2.dp)
                                 ) {
                                     Text(
-                                        text = uiState.lastUpdatedText,
+                                        text = uiState.lastUpdatedText ?: strings.updatedJustNow,
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
@@ -288,9 +293,9 @@ fun HomeContent(
                 }
                 is HomeUiState.Empty -> {
                     WeatherEmptyView(
-                        title = "No Weather Data",
-                        subtitle = "Search for a city or turn on location services.",
-                        actionText = "Search Location",
+                        title = strings.noWeatherDataTitle,
+                        subtitle = strings.noWeatherDataSubtitle,
+                        actionText = strings.searchLocation,
                         onAction = onNavigateToSearch,
                         modifier = Modifier.align(Alignment.Center)
                     )
@@ -317,7 +322,7 @@ fun HomeContent(
                             if (uiState.isOffline) {
                                 item {
                                     OfflineBanner(
-                                        lastUpdatedText = uiState.lastUpdatedText,
+                                        lastUpdatedText = uiState.lastUpdatedText ?: strings.updatedJustNow,
                                         onRetry = onRefresh
                                     )
                                 }
