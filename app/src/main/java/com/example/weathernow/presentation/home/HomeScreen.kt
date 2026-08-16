@@ -84,6 +84,17 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+
 sealed interface HomeUiState {
     data object Loading : HomeUiState
     data object Empty : HomeUiState
@@ -105,6 +116,8 @@ class HomeViewModel(
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    val favoriteLocationsFlow = weatherRepository.observeFavoriteLocations()
+
     init {
         loadWeatherData()
     }
@@ -113,7 +126,8 @@ class HomeViewModel(
         latitude: Double = 21.0285,
         longitude: Double = 105.8542,
         locationName: String = "Hà Nội",
-        adminArea: String? = "Thủ đô Hà Nội"
+        adminArea: String? = "Thủ đô Hà Nội",
+        country: String? = null
     ) {
         viewModelScope.launch {
             _uiState.value = HomeUiState.Loading
@@ -128,9 +142,9 @@ class HomeViewModel(
                         is com.example.weathernow.core.common.Resource.Success -> {
                             val currentWeather = currentRes.data
                             val location = WeatherLocation(
-                                id = "current_loc",
+                                id = "loc_${latitude}_${longitude}",
                                 name = locationName,
-                                country = "Việt Nam",
+                                country = country ?: (if (locationName == "Hà Nội") "Việt Nam" else null),
                                 adminArea = adminArea,
                                 latitude = latitude,
                                 longitude = longitude
@@ -180,7 +194,8 @@ class HomeViewModel(
         val lon = if (currentState is HomeUiState.Success) currentState.location.longitude else 105.8542
         val name = if (currentState is HomeUiState.Success) currentState.location.name else "Hà Nội"
         val admin = if (currentState is HomeUiState.Success) currentState.location.adminArea else "Thủ đô Hà Nội"
-        loadWeatherData(lat, lon, name, admin)
+        val country = if (currentState is HomeUiState.Success) currentState.location.country else "Việt Nam"
+        loadWeatherData(lat, lon, name, admin, country)
     }
 }
 
@@ -197,10 +212,15 @@ fun HomeScreen(
     viewModel: HomeViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val favoriteLocations by viewModel.favoriteLocationsFlow.collectAsState(initial = emptyList())
 
     HomeContent(
         uiState = uiState,
+        favoriteLocations = favoriteLocations,
         onRefresh = viewModel::refresh,
+        onSelectLocation = { lat, lon, name, admin, country ->
+            viewModel.loadWeatherData(lat, lon, name, admin, country)
+        },
         onNavigateToSearch = onNavigateToSearch,
         onNavigateToFavorites = onNavigateToFavorites,
         onNavigateToSettings = onNavigateToSettings,
@@ -216,7 +236,9 @@ fun HomeScreen(
 @Composable
 fun HomeContent(
     uiState: HomeUiState,
+    favoriteLocations: List<WeatherLocation> = emptyList(),
     onRefresh: () -> Unit,
+    onSelectLocation: (Double, Double, String, String?, String?) -> Unit = { _, _, _, _, _ -> },
     onNavigateToSearch: () -> Unit,
     onNavigateToFavorites: () -> Unit,
     onNavigateToSettings: () -> Unit,
@@ -224,6 +246,18 @@ fun HomeContent(
     modifier: Modifier = Modifier
 ) {
     val strings = LocalWeatherStrings.current
+    var showLocationSheet by remember { mutableStateOf(false) }
+
+    if (showLocationSheet) {
+        val currentLocName = (uiState as? HomeUiState.Success)?.location?.name ?: "Hà Nội"
+        LocationSwitcherBottomSheet(
+            currentLocationName = currentLocName,
+            favoriteLocations = favoriteLocations,
+            onSelectLocation = onSelectLocation,
+            onNavigateToSearch = onNavigateToSearch,
+            onDismiss = { showLocationSheet = false }
+        )
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -231,40 +265,56 @@ fun HomeContent(
             TopAppBar(
                 title = {
                     if (uiState is HomeUiState.Success) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.clickable(onClick = onNavigateToSearch)
+                        Surface(
+                            onClick = { showLocationSheet = true },
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                            modifier = Modifier.padding(vertical = 4.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.LocationOn,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Column {
-                                val country = uiState.location.country
-                                val locationTitle = if (country.isNullOrBlank() || uiState.location.name.contains(country)) {
-                                    uiState.location.name
-                                } else {
-                                    "${uiState.location.name}, $country"
-                                }
-                                Text(
-                                    text = locationTitle,
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = MaterialTheme.colorScheme.onSurface
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.LocationOn,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
                                 )
-                                Surface(
-                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-                                    shape = CircleShape,
-                                    modifier = Modifier.padding(top = 2.dp)
-                                ) {
-                                    Text(
-                                        text = uiState.lastUpdatedText ?: strings.updatedJustNow,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
-                                    )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Column {
+                                    val country = uiState.location.country
+                                    val locationTitle = if (country.isNullOrBlank() || uiState.location.name.contains(country)) {
+                                        uiState.location.name
+                                    } else {
+                                        "${uiState.location.name}, $country"
+                                    }
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = locationTitle,
+                                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Icon(
+                                            imageVector = Icons.Default.ArrowDropDown,
+                                            contentDescription = "Đổi tỉnh thành",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                                        shape = CircleShape,
+                                        modifier = Modifier.padding(top = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = uiState.lastUpdatedText ?: strings.updatedJustNow,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -711,6 +761,190 @@ private fun DailyForecastSection(
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.width(32.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Modern modal bottom sheet for switching active city/province on HomeScreen.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LocationSwitcherBottomSheet(
+    currentLocationName: String,
+    favoriteLocations: List<WeatherLocation>,
+    onSelectLocation: (Double, Double, String, String?, String?) -> Unit,
+    onNavigateToSearch: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 36.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Đổi tỉnh / thành phố",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Default.Close, contentDescription = "Đóng")
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Option 1: Default / Current Location (Hanoi)
+            val isCurrentSelected = currentLocationName == "Hà Nội"
+            Surface(
+                onClick = {
+                    onSelectLocation(21.0285, 105.8542, "Hà Nội", "Thủ đô Hà Nội", "Việt Nam")
+                    onDismiss()
+                },
+                shape = RoundedCornerShape(16.dp),
+                color = if (isCurrentSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MyLocation,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Hà Nội (Mặc định)",
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Việt Nam",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    if (isCurrentSelected) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (favoriteLocations.isNotEmpty()) {
+                Text(
+                    text = "Địa điểm yêu thích (${favoriteLocations.size})",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                LazyColumn(
+                    modifier = Modifier.heightIn(max = 240.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(favoriteLocations) { loc ->
+                        val isSelected = currentLocationName == loc.name
+                        Surface(
+                            onClick = {
+                                onSelectLocation(loc.latitude, loc.longitude, loc.name, loc.adminArea, loc.country)
+                                onDismiss()
+                            },
+                            shape = RoundedCornerShape(16.dp),
+                            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Favorite,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(14.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = loc.name,
+                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    val subtitle = loc.adminArea ?: loc.country ?: ""
+                                    if (subtitle.isNotBlank()) {
+                                        Text(
+                                            text = subtitle,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                                if (isSelected) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // Option 3: Search new city
+            Surface(
+                onClick = {
+                    onDismiss()
+                    onNavigateToSearch()
+                },
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Tìm kiếm tỉnh / thành phố khác",
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                 }
             }
