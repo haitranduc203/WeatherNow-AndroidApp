@@ -7,5 +7,6 @@ data class WeatherLocation(
     val adminArea: String? = null,
     val latitude: Double,
     val longitude: Double,
-    val timezone: String?
+    val timezone: String? = null,
+    val isFavorite: Boolean = false
 )

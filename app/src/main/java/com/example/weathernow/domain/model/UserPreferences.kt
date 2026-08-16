@@ -22,6 +22,9 @@ data class UserPreferences(
     val temperatureUnit: TemperatureUnit = TemperatureUnit.CELSIUS,
     val windSpeedUnit: WindSpeedUnit = WindSpeedUnit.KMH,
     val notificationsEnabled: Boolean = false,
+    val dailyNotificationEnabled: Boolean = false,
+    val severeWeatherAlertsEnabled: Boolean = false,
     val backgroundRefreshEnabled: Boolean = false,
+    val backgroundRefreshIntervalHours: Int = 3,
     val isOnboardingCompleted: Boolean = false
 )

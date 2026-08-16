@@ -7,7 +7,10 @@ data class CurrentWeather(
     val feelsLikeCelsius: Double,
     val humidityPercent: Int?,
     val windSpeedKmh: Double?,
-    val precipitationMm: Double?,
+    val windDirectionDegrees: Int? = null,
+    val uvIndex: Double? = null,
+    val precipitationMm: Double? = null,
+    val pressureHpa: Double? = null,
     val condition: WeatherCondition,
     val observedAt: Instant
 )

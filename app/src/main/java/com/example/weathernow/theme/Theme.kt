@@ -12,49 +12,70 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = WeatherBlueNeon,
-    secondary = WeatherSunGoldDark,
-    tertiary = WeatherSkyBlueLight,
-    background = WeatherDeepMidnight,
+    primary = WeatherPrimary,
+    onPrimary = WeatherOnPrimary,
+    primaryContainer = WeatherPrimaryContainer,
+    onPrimaryContainer = WeatherOnPrimaryContainer,
+    secondary = WeatherSecondary,
+    onSecondary = WeatherOnSecondary,
+    secondaryContainer = WeatherSecondaryContainer,
+    onSecondaryContainer = WeatherOnSecondaryContainer,
+    tertiary = WeatherTertiary,
+    onTertiary = WeatherOnTertiary,
+    tertiaryContainer = WeatherTertiaryContainer,
+    onTertiaryContainer = WeatherOnTertiaryContainer,
+    background = WeatherBackgroundDark,
+    onBackground = WeatherOnBackground,
     surface = WeatherSurfaceDark,
-    surfaceVariant = WeatherCardDark,
-    onPrimary = WeatherDeepMidnight,
-    onSecondary = WeatherDeepMidnight,
-    onBackground = WeatherTextPrimaryDark,
-    onSurface = WeatherTextPrimaryDark,
-    onSurfaceVariant = WeatherTextSecondaryDark
+    onSurface = WeatherOnSurface,
+    surfaceVariant = WeatherSurfaceVariant,
+    onSurfaceVariant = WeatherOnSurfaceVariant,
+    outline = WeatherOutline,
+    outlineVariant = WeatherOutlineVariant,
+    error = WeatherError,
+    onError = WeatherOnError,
+    errorContainer = WeatherErrorContainer
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = WeatherSkyBlue,
-    secondary = WeatherSunGold,
-    tertiary = WeatherSkyBlueLight,
-    background = WeatherBackgroundLight,
-    surface = WeatherCardLight,
-    surfaceVariant = WeatherCardLight,
+    primary = WeatherPrimaryLight,
     onPrimary = Color.White,
+    primaryContainer = WeatherPrimaryContainerLight,
+    onPrimaryContainer = WeatherPrimaryLight,
+    secondary = WeatherSecondaryLight,
     onSecondary = Color.White,
-    onBackground = WeatherTextPrimaryLight,
-    onSurface = WeatherTextPrimaryLight,
-    onSurfaceVariant = WeatherTextSecondaryLight
+    secondaryContainer = WeatherSecondaryContainerLight,
+    onSecondaryContainer = WeatherSecondaryLight,
+    tertiary = WeatherTertiary,
+    onTertiary = Color.White,
+    background = WeatherBackgroundLight,
+    onBackground = WeatherOnSurfaceLight,
+    surface = WeatherSurfaceLight,
+    onSurface = WeatherOnSurfaceLight,
+    surfaceVariant = WeatherSurfaceContainerLight,
+    onSurfaceVariant = WeatherOnSurfaceVariantLight,
+    outline = WeatherOutline,
+    outlineVariant = WeatherOutlineVariant
 )
 
 @Composable
 fun WeatherNowTheme(
-  darkTheme: Boolean = isSystemInDarkTheme(),
-  // Dynamic color is available on Android 12+
-  dynamicColor: Boolean = true,
-  content: @Composable () -> Unit,
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    dynamicColor: Boolean = false,
+    content: @Composable () -> Unit
 ) {
-  val colorScheme =
-    when {
-      dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-        val context = LocalContext.current
-        if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-      }
-      darkTheme -> DarkColorScheme
-      else -> LightColorScheme
+    val colorScheme = when {
+        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+            val context = LocalContext.current
+            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        }
+        darkTheme -> DarkColorScheme
+        else -> LightColorScheme
     }
 
-  MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
+    MaterialTheme(
+        colorScheme = colorScheme,
+        typography = Typography,
+        content = content
+    )
 }
