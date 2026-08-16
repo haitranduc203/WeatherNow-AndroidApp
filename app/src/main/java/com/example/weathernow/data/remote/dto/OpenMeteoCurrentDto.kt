@@ -15,5 +15,6 @@ data class OpenMeteoCurrentDto(
     @SerialName("wind_direction_10m") val windDirection10m: Int? = null,
     @SerialName("precipitation") val precipitation: Double? = null,
     @SerialName("surface_pressure") val surfacePressure: Double? = null,
-    @SerialName("uv_index") val uvIndex: Double? = null
+    @SerialName("uv_index") val uvIndex: Double? = null,
+    @SerialName("is_day") val isDay: Int? = 1
 )

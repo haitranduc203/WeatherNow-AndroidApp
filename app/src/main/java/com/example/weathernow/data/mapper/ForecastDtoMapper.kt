@@ -75,7 +75,8 @@ object ForecastDtoMapper {
             precipitationMm = current.precipitation,
             pressureHpa = current.surfacePressure,
             condition = WeatherCodeMapper.mapCodeToCondition(current.weatherCode),
-            observedAt = observedAt
+            observedAt = observedAt,
+            isDay = (current.isDay == 1) || (current.isDay == null && observedAt.atZone(zoneId).hour in 6..18)
         )
     }
 
@@ -87,6 +88,7 @@ object ForecastDtoMapper {
         val temps = hourly.temperature2m
         val probs = hourly.precipitationProbability
         val codes = hourly.weatherCode
+        val isDayList = hourly.isDay
 
         val size = minOf(times.size, temps.size, codes.size)
         val result = ArrayList<HourlyForecast>(size)
@@ -97,13 +99,19 @@ object ForecastDtoMapper {
             val temp = temps[i]
             val prob = if (i < probs.size) probs[i] else null
             val code = codes[i]
+            val isDay = if (i < isDayList.size && isDayList[i] != null) {
+                isDayList[i] == 1
+            } else {
+                instant.atZone(zoneId).hour in 6..18
+            }
 
             result.add(
                 HourlyForecast(
                     time = instant,
                     temperatureCelsius = temp,
                     precipitationProbabilityPercent = prob,
-                    condition = WeatherCodeMapper.mapCodeToCondition(code)
+                    condition = WeatherCodeMapper.mapCodeToCondition(code),
+                    isDay = isDay
                 )
             )
         }

@@ -364,7 +364,11 @@ private fun HourlyTrendChartCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(6.dp))
-                        WeatherConditionIcon(condition = hourly.condition, size = 28.dp)
+                        WeatherConditionIcon(
+                            condition = hourly.condition,
+                            isDay = hourly.isDay,
+                            size = 28.dp
+                        )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             text = "${hourly.temperatureCelsius.toInt()}°C",

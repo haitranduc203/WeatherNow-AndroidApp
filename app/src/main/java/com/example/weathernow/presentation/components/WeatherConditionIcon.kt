@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AcUnit
 import androidx.compose.material.icons.filled.Air
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Grain
 import androidx.compose.material.icons.filled.Thunderstorm
@@ -28,13 +29,26 @@ import com.example.weathernow.theme.WeatherTertiary
 @Composable
 fun WeatherConditionIcon(
     condition: WeatherCondition,
+    isDay: Boolean = true,
     modifier: Modifier = Modifier,
     size: Dp = 32.dp,
     tint: Color? = null
 ) {
     val (icon, defaultTint) = when (condition) {
-        WeatherCondition.CLEAR -> Icons.Default.WbSunny to WeatherTertiary
-        WeatherCondition.PARTLY_CLOUDY -> Icons.Default.WbCloudy to Color(0xFFFFCA28)
+        WeatherCondition.CLEAR -> {
+            if (isDay) {
+                Icons.Default.WbSunny to WeatherTertiary
+            } else {
+                Icons.Default.Bedtime to Color(0xFF90CAF9)
+            }
+        }
+        WeatherCondition.PARTLY_CLOUDY -> {
+            if (isDay) {
+                Icons.Default.WbCloudy to Color(0xFFFFCA28)
+            } else {
+                Icons.Default.Cloud to Color(0xFF90A4AE)
+            }
+        }
         WeatherCondition.CLOUDY -> Icons.Default.Cloud to Color(0xFF90A4AE)
         WeatherCondition.FOG -> Icons.Default.Air to Color(0xFFB0BEC5)
         WeatherCondition.DRIZZLE,

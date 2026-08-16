@@ -399,6 +399,7 @@ private fun HeroWeatherCard(
         ) {
             WeatherConditionIcon(
                 condition = currentWeather.condition,
+                isDay = currentWeather.isDay,
                 size = 72.dp
             )
             Spacer(modifier = Modifier.height(12.dp))
@@ -574,7 +575,11 @@ private fun HourlyForecastSection(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        WeatherConditionIcon(condition = hourly.condition, size = 26.dp)
+                        WeatherConditionIcon(
+                            condition = hourly.condition,
+                            isDay = hourly.isDay,
+                            size = 26.dp
+                        )
                         Spacer(modifier = Modifier.height(8.dp))
                         if (rainProb > 0) {
                             Text(

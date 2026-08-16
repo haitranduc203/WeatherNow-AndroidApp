@@ -12,5 +12,6 @@ data class CurrentWeather(
     val precipitationMm: Double? = null,
     val pressureHpa: Double? = null,
     val condition: WeatherCondition,
-    val observedAt: Instant
+    val observedAt: Instant,
+    val isDay: Boolean = true
 )

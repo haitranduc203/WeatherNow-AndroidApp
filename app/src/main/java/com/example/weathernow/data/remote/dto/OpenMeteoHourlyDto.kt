@@ -14,5 +14,6 @@ data class OpenMeteoHourlyDto(
     @SerialName("weather_code") val weatherCode: List<Int> = emptyList(),
     @SerialName("surface_pressure") val surfacePressure: List<Double?> = emptyList(),
     @SerialName("wind_speed_10m") val windSpeed10m: List<Double?> = emptyList(),
-    @SerialName("uv_index") val uvIndex: List<Double?> = emptyList()
+    @SerialName("uv_index") val uvIndex: List<Double?> = emptyList(),
+    @SerialName("is_day") val isDay: List<Int?> = emptyList()
 )
