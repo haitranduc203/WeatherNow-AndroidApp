@@ -2,6 +2,7 @@ plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.compose.compiler)
   alias(libs.plugins.kotlin.serialization)
+  alias(libs.plugins.ksp)
 }
 
 android {
@@ -85,6 +86,7 @@ dependencies {
   // Local Persistence (Room & DataStore)
   implementation(libs.androidx.room.runtime)
   implementation(libs.androidx.room.ktx)
+  ksp(libs.androidx.room.compiler)
   implementation(libs.androidx.datastore.preferences)
 
   // Background WorkManager
@@ -93,11 +95,14 @@ dependencies {
   // Location Services
   implementation(libs.play.services.location)
 
-  // Local tests: jUnit, Coroutines test, Turbine, MockK
+  // Local tests: jUnit, Coroutines test, Turbine, MockK, Robolectric
   testImplementation(libs.junit)
   testImplementation(libs.kotlinx.coroutines.test)
   testImplementation(libs.turbine)
   testImplementation(libs.mockk)
+  testImplementation(libs.androidx.test.core)
+  testImplementation(libs.androidx.test.ext.junit)
+  testImplementation("org.robolectric:robolectric:4.14.1")
   testImplementation(libs.androidx.room.testing)
   testImplementation(libs.androidx.work.testing)
 
