@@ -245,17 +245,6 @@ fun FavoritesContent(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
-        },
-        floatingActionButton = {
-            androidx.compose.material3.FloatingActionButton(
-                onClick = onNavigateToAdd,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                shape = CircleShape,
-                modifier = Modifier.padding(bottom = 76.dp)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = strings.addLocation)
-            }
         }
     ) { innerPadding ->
         Box(
@@ -283,7 +272,7 @@ fun FavoritesContent(
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             verticalArrangement = Arrangement.spacedBy(14.dp),
-                            contentPadding = PaddingValues(top = 8.dp, bottom = 150.dp)
+                            contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp)
                         ) {
                             // 1. Current Pinned Location Card (Stitch Component)
                             uiState.currentLocation?.let { current ->
