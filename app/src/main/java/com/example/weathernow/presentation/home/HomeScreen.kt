@@ -167,6 +167,8 @@ class HomeViewModel(
                                 }
                             } catch (_: Exception) {}
 
+                            com.example.weathernow.domain.model.ActiveLocationManager.setActiveLocation(location)
+
                             _uiState.value = HomeUiState.Success(
                                 location = location,
                                 currentWeather = currentWeather,

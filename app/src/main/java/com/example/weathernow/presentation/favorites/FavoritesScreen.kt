@@ -2,10 +2,6 @@ package com.example.weathernow.presentation.favorites
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,7 +46,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.weathernow.core.common.Resource
+import com.example.weathernow.domain.model.ActiveLocationManager
 import com.example.weathernow.domain.model.AppLanguage
+import com.example.weathernow.domain.model.CurrentWeather
+import com.example.weathernow.domain.model.DailyForecast
 import com.example.weathernow.domain.model.WeatherCondition
 import com.example.weathernow.domain.model.WeatherLocation
 import com.example.weathernow.presentation.components.GlassCard
@@ -61,6 +61,12 @@ import com.example.weathernow.presentation.util.LocalAppLanguage
 import com.example.weathernow.presentation.util.LocalWeatherStrings
 import com.example.weathernow.presentation.util.ProvideWeatherLanguage
 import com.example.weathernow.theme.WeatherNowTheme
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.launch
 
 data class FavoriteItemUiModel(
     val location: WeatherLocation,
@@ -81,7 +87,8 @@ sealed interface FavoritesUiState {
 }
 
 class FavoritesViewModel(
-    private val weatherRepository: com.example.weathernow.domain.repository.WeatherRepository = com.example.weathernow.data.repository.WeatherRepositoryImpl()
+    private val weatherRepository: com.example.weathernow.domain.repository.WeatherRepository = com.example.weathernow.data.repository.WeatherRepositoryImpl(),
+    private val activeLocationManager: ActiveLocationManager = ActiveLocationManager
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<FavoritesUiState>(FavoritesUiState.Loading)
     val uiState: StateFlow<FavoritesUiState> = _uiState.asStateFlow()
@@ -92,34 +99,56 @@ class FavoritesViewModel(
 
     fun loadFavorites() {
         viewModelScope.launch {
-            val hanoiLocation = WeatherLocation(
-                id = "vn_hanoi",
-                name = "Hà Nội",
-                country = "Việt Nam",
-                adminArea = "Thủ đô Hà Nội",
-                latitude = 21.0285,
-                longitude = 105.8542,
-                timezone = "Asia/Ho_Chi_Minh",
-                isFavorite = true
-            )
+            combine(
+                activeLocationManager.activeLocation,
+                weatherRepository.observeFavoriteLocations()
+            ) { activeLoc, favLocations ->
+                // 1. Build current active location UI model instantly from active location
+                val tz = try {
+                    if (!activeLoc.timezone.isNullOrBlank()) java.time.ZoneId.of(activeLoc.timezone) else java.time.ZoneId.systemDefault()
+                } catch (_: Exception) {
+                    java.time.ZoneId.systemDefault()
+                }
+                val localTimeFormatted = java.time.ZonedDateTime.now(tz).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
 
-            val currentHanoi = FavoriteItemUiModel(
-                location = hanoiLocation,
-                temperature = 28.0,
-                condition = WeatherCondition.CLEAR,
-                localTime = java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")),
-                minTemp = 24.0,
-                maxTemp = 33.0
-            )
+                val currentActiveModel = FavoriteItemUiModel(
+                    location = activeLoc,
+                    temperature = when (activeLoc.name) {
+                        "Tokyo" -> 19.0
+                        "Paris" -> 22.0
+                        "New York" -> 16.0
+                        "Sydney" -> 24.0
+                        "Hà Nội", "Thái Bình", "Hưng Yên" -> 28.0
+                        else -> 26.0
+                    },
+                    condition = when (activeLoc.name) {
+                        "Paris" -> WeatherCondition.RAIN
+                        "New York" -> WeatherCondition.CLOUDY
+                        else -> WeatherCondition.CLEAR
+                    },
+                    localTime = localTimeFormatted,
+                    minTemp = when (activeLoc.name) {
+                        "Paris" -> 16.0
+                        "Tokyo" -> 14.0
+                        "New York" -> 12.0
+                        else -> 24.0
+                    },
+                    maxTemp = when (activeLoc.name) {
+                        "Paris" -> 26.0
+                        "Tokyo" -> 24.0
+                        "New York" -> 22.0
+                        else -> 34.0
+                    }
+                )
 
-            weatherRepository.observeFavoriteLocations().collect { favLocations ->
+                // 2. Build favorite list models
                 val items = favLocations.map { loc ->
-                    val tz = try {
+                    val locTz = try {
                         if (!loc.timezone.isNullOrBlank()) java.time.ZoneId.of(loc.timezone) else java.time.ZoneId.systemDefault()
                     } catch (_: Exception) {
                         java.time.ZoneId.systemDefault()
                     }
-                    val localTimeFormatted = java.time.ZonedDateTime.now(tz).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
+                    val locTime = java.time.ZonedDateTime.now(locTz).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
 
                     FavoriteItemUiModel(
                         location = loc,
@@ -140,16 +169,18 @@ class FavoritesViewModel(
                             "Thái Bình", "Hưng Yên", "Hà Nội" -> WeatherCondition.CLEAR
                             else -> WeatherCondition.PARTLY_CLOUDY
                         },
-                        localTime = localTimeFormatted,
+                        localTime = locTime,
                         minTemp = 18.0,
                         maxTemp = 28.0
                     )
                 }
 
-                _uiState.value = FavoritesUiState.Success(
-                    currentLocation = currentHanoi,
+                FavoritesUiState.Success(
+                    currentLocation = currentActiveModel,
                     favoritesList = items
                 )
+            }.collect { newState ->
+                _uiState.value = newState
             }
         }
     }
