@@ -16,6 +16,8 @@ class WeatherNowApp : Application() {
         super.onCreate()
         instance = this
         container = DefaultAppContainer(this)
+        // Eagerly initialize Room database singleton
+        val db = container.database
 
         // Initialize Notification Channel
         com.example.weathernow.core.notification.WeatherNotificationManager.createNotificationChannel(this)

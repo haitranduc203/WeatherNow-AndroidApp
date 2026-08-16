@@ -22,8 +22,11 @@ import com.example.weathernow.data.local.db.dao.FavoriteLocationDao
 import com.example.weathernow.data.local.db.entity.CachedWeatherEntity
 import com.example.weathernow.data.local.db.entity.FavoriteLocationEntity
 import com.example.weathernow.domain.model.WeatherCondition
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import java.time.Instant
 
 class WeatherRepositoryImpl(
@@ -252,12 +255,12 @@ class WeatherRepositoryImpl(
                             )
                         }
                     }
-                }
+                }.flowOn(Dispatchers.IO)
             )
         }
-    }
+    }.flowOn(Dispatchers.IO)
 
-    override suspend fun addFavoriteLocation(location: WeatherLocation): Resource<Unit> {
+    override suspend fun addFavoriteLocation(location: WeatherLocation): Resource<Unit> = withContext(Dispatchers.IO) {
         val dao = favoriteLocationDao
         if (dao != null) {
             val id = "${String.format(java.util.Locale.US, "%.2f", location.latitude)}_${String.format(java.util.Locale.US, "%.2f", location.longitude)}"
@@ -282,10 +285,10 @@ class WeatherRepositoryImpl(
                 _fallbackFavorites.value = currentList
             }
         }
-        return Resource.Success(Unit)
+        Resource.Success(Unit)
     }
 
-    override suspend fun removeFavoriteLocation(locationId: String): Resource<Unit> {
+    override suspend fun removeFavoriteLocation(locationId: String): Resource<Unit> = withContext(Dispatchers.IO) {
         val dao = favoriteLocationDao
         if (dao != null) {
             val deleted = dao.deleteFavoriteById(locationId)
@@ -297,11 +300,22 @@ class WeatherRepositoryImpl(
             currentList.removeAll { it.id == locationId || it.name.equals(locationId, ignoreCase = true) }
             _fallbackFavorites.value = currentList
         }
-        return Resource.Success(Unit)
+        Resource.Success(Unit)
     }
 
-    override suspend fun isFavoriteLocation(latitude: Double, longitude: Double): Boolean {
-        return favoriteLocationDao?.isFavoriteSync(latitude, longitude)
-            ?: _fallbackFavorites.value.any { it.latitude == latitude && it.longitude == longitude }
+    override suspend fun isFavoriteLocation(latitude: Double, longitude: Double, name: String?): Boolean = withContext(Dispatchers.IO) {
+        val dao = favoriteLocationDao
+        if (dao != null) {
+            if (!name.isNullOrBlank()) {
+                dao.isFavoriteLocation(latitude, longitude, name)
+            } else {
+                dao.isFavoriteSync(latitude, longitude)
+            }
+        } else {
+            _fallbackFavorites.value.any {
+                (it.latitude == latitude && it.longitude == longitude) ||
+                (!name.isNullOrBlank() && it.name.equals(name, ignoreCase = true))
+            }
+        }
     }
 }

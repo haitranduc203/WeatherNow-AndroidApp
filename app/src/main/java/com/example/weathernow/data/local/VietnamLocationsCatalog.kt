@@ -119,6 +119,46 @@ object VietnamLocationsCatalog {
 
         // === 2. CÁC TỈNH ĐỒNG BẰNG SÔNG HỒNG & MIỀN BẮC (SAU SÁP NHẬP) ===
         VietnamLocationEntry(
+            id = "vn_halong",
+            name = "Hạ Long",
+            adminArea = "Tỉnh Quảng Ninh",
+            latitude = 20.9505,
+            longitude = 107.0734,
+            aliases = listOf("ha long", "tp ha long", "quang ninh", "qn", "vinh ha long", "bai chay", "hon gai")
+        ),
+        VietnamLocationEntry(
+            id = "vn_quangninh",
+            name = "Quảng Ninh",
+            adminArea = "Tỉnh Quảng Ninh",
+            latitude = 20.9505,
+            longitude = 107.0734,
+            aliases = listOf("quang ninh", "qn", "tinh quang ninh", "ha long")
+        ),
+        VietnamLocationEntry(
+            id = "vn_campha",
+            name = "Cẩm Phả",
+            adminArea = "Tỉnh Quảng Ninh",
+            latitude = 21.0167,
+            longitude = 107.3167,
+            aliases = listOf("cam pha", "tp cam pha", "quang ninh")
+        ),
+        VietnamLocationEntry(
+            id = "vn_uongbi",
+            name = "Uông Bí",
+            adminArea = "Tỉnh Quảng Ninh",
+            latitude = 21.0333,
+            longitude = 106.7833,
+            aliases = listOf("uong bi", "tp uong bi", "quang ninh")
+        ),
+        VietnamLocationEntry(
+            id = "vn_mongcai",
+            name = "Móng Cái",
+            adminArea = "Tỉnh Quảng Ninh",
+            latitude = 21.5333,
+            longitude = 107.9667,
+            aliases = listOf("mong cai", "tp mong cai", "quang ninh")
+        ),
+        VietnamLocationEntry(
             id = "vn_hungyen",
             name = "Hưng Yên",
             adminArea = "Tỉnh Hưng Yên",

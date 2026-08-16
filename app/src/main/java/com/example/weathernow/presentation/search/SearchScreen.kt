@@ -78,8 +78,8 @@ data class SearchUiModel(
 )
 
 class SearchViewModel(
-    private val locationRepository: com.example.weathernow.domain.repository.LocationRepository = com.example.weathernow.data.repository.LocationRepositoryImpl(),
-    private val weatherRepository: com.example.weathernow.domain.repository.WeatherRepository = com.example.weathernow.data.repository.WeatherRepositoryImpl()
+    private val locationRepository: com.example.weathernow.domain.repository.LocationRepository = com.example.weathernow.WeatherNowApp.instance?.appContainer?.locationRepository ?: com.example.weathernow.data.repository.LocationRepositoryImpl(),
+    private val weatherRepository: com.example.weathernow.domain.repository.WeatherRepository = com.example.weathernow.WeatherNowApp.instance?.appContainer?.weatherRepository ?: com.example.weathernow.data.repository.WeatherRepositoryImpl()
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SearchUiModel())
     val uiState: StateFlow<SearchUiModel> = _uiState.asStateFlow()

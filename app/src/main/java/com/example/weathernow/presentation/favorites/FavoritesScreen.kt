@@ -96,7 +96,7 @@ sealed interface FavoritesUiState {
 }
 
 class FavoritesViewModel(
-    private val weatherRepository: com.example.weathernow.domain.repository.WeatherRepository = com.example.weathernow.data.repository.WeatherRepositoryImpl(),
+    private val weatherRepository: com.example.weathernow.domain.repository.WeatherRepository = com.example.weathernow.WeatherNowApp.instance?.appContainer?.weatherRepository ?: com.example.weathernow.data.repository.WeatherRepositoryImpl(),
     private val activeLocationManager: ActiveLocationManager = ActiveLocationManager
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<FavoritesUiState>(FavoritesUiState.Loading)
@@ -235,6 +235,7 @@ fun FavoritesScreen(
             onDismissRequest = { showAddSheet = false },
             onAddLocation = { loc ->
                 viewModel.addFavorite(loc)
+                showAddSheet = false
             }
         )
     }

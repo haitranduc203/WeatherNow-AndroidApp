@@ -103,14 +103,14 @@ data class ForecastDetailUiState(
 )
 
 class ForecastViewModel(
-    private val weatherRepository: com.example.weathernow.domain.repository.WeatherRepository = com.example.weathernow.data.repository.WeatherRepositoryImpl()
+    private val weatherRepository: com.example.weathernow.domain.repository.WeatherRepository = com.example.weathernow.WeatherNowApp.instance?.appContainer?.weatherRepository ?: com.example.weathernow.data.repository.WeatherRepositoryImpl()
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ForecastDetailUiState())
     val uiState: StateFlow<ForecastDetailUiState> = _uiState.asStateFlow()
 
     fun loadForecast(lat: Double, lon: Double, name: String, adminArea: String? = null) {
         viewModelScope.launch {
-            val isFav = weatherRepository.isFavoriteLocation(lat, lon)
+            val isFav = weatherRepository.isFavoriteLocation(lat, lon, name)
             _uiState.value = _uiState.value.copy(
                 isLoading = true,
                 latitude = lat,
@@ -163,6 +163,7 @@ class ForecastViewModel(
                     }
                 }
 
+                val finalFav = weatherRepository.isFavoriteLocation(lat, lon, name)
                 _uiState.value = _uiState.value.copy(
                     hourlyList = hourlyData,
                     dailyList = dailyData,
@@ -174,7 +175,7 @@ class ForecastViewModel(
                     pressureHpa = pressure,
                     sunriseTime = sunriseStr,
                     sunsetTime = sunsetStr,
-                    isFavorite = isFav,
+                    isFavorite = finalFav,
                     isLoading = false
                 )
             } catch (_: Exception) {
@@ -201,6 +202,7 @@ class ForecastViewModel(
             } else {
                 val id = "${String.format(java.util.Locale.US, "%.2f", state.latitude)}_${String.format(java.util.Locale.US, "%.2f", state.longitude)}"
                 weatherRepository.removeFavoriteLocation(id)
+                weatherRepository.removeFavoriteLocation(state.locationName)
             }
             _uiState.value = _uiState.value.copy(isFavorite = newFav)
         }

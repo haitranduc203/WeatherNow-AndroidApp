@@ -19,6 +19,9 @@ interface FavoriteLocationDao {
     @Query("SELECT EXISTS(SELECT 1 FROM favorite_locations WHERE ABS(latitude - :latitude) < 0.05 AND ABS(longitude - :longitude) < 0.05)")
     fun isFavorite(latitude: Double, longitude: Double): Flow<Boolean>
 
+    @Query("SELECT EXISTS(SELECT 1 FROM favorite_locations WHERE (ABS(latitude - :latitude) < 0.15 AND ABS(longitude - :longitude) < 0.15) OR name = :name OR (name LIKE '%' || :name || '%') OR (:name LIKE '%' || name || '%'))")
+    fun isFavoriteLocation(latitude: Double, longitude: Double, name: String): Boolean
+
     @Query("SELECT EXISTS(SELECT 1 FROM favorite_locations WHERE ABS(latitude - :latitude) < 0.05 AND ABS(longitude - :longitude) < 0.05)")
     fun isFavoriteSync(latitude: Double, longitude: Double): Boolean
 

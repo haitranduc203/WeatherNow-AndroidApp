@@ -16,5 +16,5 @@ interface WeatherRepository {
     fun observeFavoriteLocations(): Flow<List<WeatherLocation>>
     suspend fun addFavoriteLocation(location: WeatherLocation): Resource<Unit>
     suspend fun removeFavoriteLocation(locationId: String): Resource<Unit>
-    suspend fun isFavoriteLocation(latitude: Double, longitude: Double): Boolean
+    suspend fun isFavoriteLocation(latitude: Double, longitude: Double, name: String? = null): Boolean
 }
