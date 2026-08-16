@@ -85,4 +85,34 @@ class WeatherRepositoryTest {
         assertTrue(locations.isNotEmpty())
         assertEquals("Hà Nội", locations[0].name)
     }
+
+    @Test
+    fun `observeCurrentWeather when remote fails and no cache exists returns Error`() = runTest {
+        val failingRemoteDataSource = object : OpenMeteoRemoteDataSource {
+            override suspend fun getForecast(
+                latitude: Double,
+                longitude: Double,
+                timezone: String,
+                forecastDays: Int
+            ): OpenMeteoForecastDto {
+                throw java.io.IOException("Network unreachable")
+            }
+
+            override suspend fun searchLocations(
+                name: String,
+                count: Int,
+                language: String
+            ): OpenMeteoGeocodingDto {
+                throw java.io.IOException("Network unreachable")
+            }
+        }
+
+        val repository = WeatherRepositoryImpl(remoteDataSource = failingRemoteDataSource)
+        val emissions = repository.observeCurrentWeather(21.0285, 105.8542).toList()
+
+        assertEquals(2, emissions.size)
+        assertTrue(emissions[0] is Resource.Loading)
+        assertTrue(emissions[1] is Resource.Error)
+        assertEquals("Network unreachable", (emissions[1] as Resource.Error).message)
+    }
 }

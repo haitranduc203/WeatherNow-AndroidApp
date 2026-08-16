@@ -91,7 +91,7 @@ class BaselineViewModelTest {
         assertTrue(state is FavoritesUiState.Success)
         val success = state as FavoritesUiState.Success
         assertNotNull(success.currentLocation)
-        assertEquals("Hanoi", success.currentLocation?.location?.name)
+        assertEquals("Hà Nội", success.currentLocation?.location?.name)
         assertEquals(4, success.favoritesList.size)
     }
 
