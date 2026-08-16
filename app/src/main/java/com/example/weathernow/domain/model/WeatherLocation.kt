@@ -9,4 +9,7 @@ data class WeatherLocation(
     val longitude: Double,
     val timezone: String? = null,
     val isFavorite: Boolean = false
-)
+) {
+    val formattedArea: String
+        get() = listOfNotNull(adminArea, country).filter { it.isNotBlank() }.joinToString(", ")
+}

@@ -366,11 +366,14 @@ private fun FavoriteCityCard(
                     }
                 }
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = item.location.country ?: "",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                val areaSubtitle = item.location.formattedArea.ifBlank { item.location.country ?: "" }
+                if (areaSubtitle.isNotBlank()) {
+                    Text(
+                        text = areaSubtitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "${item.condition.localizedName(currentLang)} • H: ${item.maxTemp.toInt()}° L: ${item.minTemp.toInt()}°",

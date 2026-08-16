@@ -369,11 +369,14 @@ fun SearchContent(
                                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
                                                 color = MaterialTheme.colorScheme.onSurface
                                             )
-                                            Text(
-                                                text = recent.country ?: "",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
+                                            val areaSubtitle = recent.formattedArea.ifBlank { recent.country ?: "" }
+                                            if (areaSubtitle.isNotBlank()) {
+                                                Text(
+                                                    text = areaSubtitle,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
                                         }
                                     }
                                     IconButton(
@@ -435,11 +438,14 @@ fun SearchContent(
                                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
-                                        Text(
-                                            text = result.country ?: "",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
+                                        val areaSubtitle = result.formattedArea.ifBlank { result.country ?: "" }
+                                        if (areaSubtitle.isNotBlank()) {
+                                            Text(
+                                                text = areaSubtitle,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Surface(
                                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
