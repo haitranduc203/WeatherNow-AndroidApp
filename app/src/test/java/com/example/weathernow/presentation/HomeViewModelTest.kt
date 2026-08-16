@@ -72,7 +72,7 @@ class HomeViewModelTest {
 
         override suspend fun addFavoriteLocation(location: WeatherLocation): Resource<Unit> = Resource.Success(Unit)
         override suspend fun removeFavoriteLocation(locationId: String): Resource<Unit> = Resource.Success(Unit)
-        override suspend fun isFavoriteLocation(latitude: Double, longitude: Double): Boolean = false
+        override suspend fun isFavoriteLocation(latitude: Double, longitude: Double, name: String?): Boolean = false
     }
 
     @Before

@@ -46,7 +46,7 @@ class FavoritesViewModelTest {
             fakeFavFlow.value = fakeFavFlow.value.filterNot { it.id == locationId }
             return Resource.Success(Unit)
         }
-        override suspend fun isFavoriteLocation(latitude: Double, longitude: Double) = false
+        override suspend fun isFavoriteLocation(latitude: Double, longitude: Double, name: String?) = false
     }
 
     @Before

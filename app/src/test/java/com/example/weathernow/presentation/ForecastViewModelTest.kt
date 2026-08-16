@@ -73,7 +73,7 @@ class ForecastViewModelTest {
         override fun observeFavoriteLocations() = flowOf<List<WeatherLocation>>()
         override suspend fun addFavoriteLocation(location: WeatherLocation) = Resource.Success(Unit)
         override suspend fun removeFavoriteLocation(locationId: String) = Resource.Success(Unit)
-        override suspend fun isFavoriteLocation(latitude: Double, longitude: Double) = false
+        override suspend fun isFavoriteLocation(latitude: Double, longitude: Double, name: String?) = false
     }
 
     @Before
