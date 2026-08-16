@@ -39,15 +39,19 @@ object WeatherWorkScheduler {
             .addTag("weather_sync_periodic")
             .build()
 
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-            Constants.WEATHER_WORK_NAME,
-            ExistingPeriodicWorkPolicy.UPDATE,
-            periodicWorkRequest
-        )
+        try {
+            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                Constants.WEATHER_WORK_NAME,
+                ExistingPeriodicWorkPolicy.UPDATE,
+                periodicWorkRequest
+            )
+        } catch (_: Exception) {}
     }
 
     fun cancelPeriodicSync(context: Context) {
-        WorkManager.getInstance(context).cancelUniqueWork(Constants.WEATHER_WORK_NAME)
+        try {
+            WorkManager.getInstance(context).cancelUniqueWork(Constants.WEATHER_WORK_NAME)
+        } catch (_: Exception) {}
     }
 
     fun triggerOneTimeSync(context: Context) {
@@ -60,10 +64,12 @@ object WeatherWorkScheduler {
             .addTag("weather_sync_onetime")
             .build()
 
-        WorkManager.getInstance(context).enqueueUniqueWork(
-            "${Constants.WEATHER_WORK_NAME}_onetime",
-            ExistingWorkPolicy.REPLACE,
-            oneTimeWorkRequest
-        )
+        try {
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                "${Constants.WEATHER_WORK_NAME}_onetime",
+                ExistingWorkPolicy.REPLACE,
+                oneTimeWorkRequest
+            )
+        } catch (_: Exception) {}
     }
 }

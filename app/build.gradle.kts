@@ -33,6 +33,12 @@ android {
       shaders = false
     }
 
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
+
     packaging {
       resources {
         excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -105,6 +111,8 @@ dependencies {
   testImplementation("org.robolectric:robolectric:4.14.1")
   testImplementation(libs.androidx.room.testing)
   testImplementation(libs.androidx.work.testing)
+  testImplementation(libs.androidx.compose.ui.test.junit4)
+  testImplementation(libs.androidx.compose.ui.test.manifest)
 
   // Instrumented tests
   androidTestImplementation(libs.androidx.test.core)
