@@ -1,0 +1,55 @@
+# Built application files
+*.apk
+*.aar
+*.ap_
+*.aab
+
+# Files for the ART/Dalvik VM
+*.dex
+
+# Java class files
+*.class
+
+# Generated files
+bin/
+gen/
+out/
+/build
+app/build/
+.gradle/
+
+# Android Studio / IntelliJ IDEA
+*.iml
+.idea/
+.DS_Store
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Stitch design cache
+.stitch/
+
+# CodeGraph index cache
+.codegraph/
+
+# Project Planning Documents (Private - Do not commit to git)
+00_MASTER_PLAN.md
+01_REQUIREMENTS.md
+02_ARCHITECTURE.md
+03_DATA_API.md
+04_DATABASE.md
+05_UI_UX.md
+06_TASK_BACKLOG.md
+07_DEFINITION_OF_DONE.md
+08_CODING_RULES.md
+09_TEST_PLAN.md
+10_ANTIGRAVITY_PROMPT.md
+11_GIT_WORKFLOW.md
+12_PHASE_EXECUTION_GUIDE.md
+13_WEATHER_BUSINESS_RULES.md
+14_CODE_REVIEW_PROMPT.md
+[0-9][0-9]_*.md
+architecture-diagrams/
+phase-results/
+screenshots/
