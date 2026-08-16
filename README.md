@@ -1,6 +1,5 @@
 # WeatherNow — Ứng dụng dự báo thời tiết hiện đại, chuẩn Clean Architecture
 
-[![Android CI](https://github.com/haitranduc203/WeatherNow-AndroidApp/actions/workflows/android.yml/badge.svg)](https://github.com/haitranduc203/WeatherNow-AndroidApp/actions/workflows/android.yml)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.3.20-7F52FF?logo=kotlin&logoColor=white)
 ![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose%20%2F%20Material%203-4285F4?logo=jetpackcompose&logoColor=white)
 ![Min SDK](https://img.shields.io/badge/minSdk-26%20%7C%20targetSdk-36-3DDC84?logo=android&logoColor=white)
