@@ -276,7 +276,10 @@ class WeatherRepositoryImpl(
     override suspend fun removeFavoriteLocation(locationId: String): Resource<Unit> {
         val dao = favoriteLocationDao
         if (dao != null) {
-            dao.deleteFavoriteById(locationId)
+            val deleted = dao.deleteFavoriteById(locationId)
+            if (deleted == 0) {
+                dao.deleteFavoriteByName(locationId)
+            }
         } else {
             val currentList = _fallbackFavorites.value.toMutableList()
             currentList.removeAll { it.id == locationId || it.name.equals(locationId, ignoreCase = true) }

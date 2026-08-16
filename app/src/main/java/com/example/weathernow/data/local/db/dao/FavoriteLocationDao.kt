@@ -28,6 +28,9 @@ interface FavoriteLocationDao {
     @Query("DELETE FROM favorite_locations WHERE id = :id")
     fun deleteFavoriteById(id: String): Int
 
+    @Query("DELETE FROM favorite_locations WHERE name = :name")
+    fun deleteFavoriteByName(name: String): Int
+
     @Query("DELETE FROM favorite_locations WHERE ABS(latitude - :latitude) < 0.05 AND ABS(longitude - :longitude) < 0.05")
     fun deleteFavoriteByCoords(latitude: Double, longitude: Double): Int
 

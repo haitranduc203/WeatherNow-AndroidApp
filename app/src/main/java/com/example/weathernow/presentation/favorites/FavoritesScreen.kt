@@ -35,8 +35,17 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -185,6 +194,12 @@ class FavoritesViewModel(
         }
     }
 
+    fun addFavorite(location: WeatherLocation) {
+        viewModelScope.launch {
+            weatherRepository.addFavoriteLocation(location.copy(isFavorite = true))
+        }
+    }
+
     fun removeFavorite(locationId: String) {
         viewModelScope.launch {
             weatherRepository.removeFavoriteLocation(locationId)
@@ -204,15 +219,25 @@ fun FavoritesScreen(
     viewModel: FavoritesViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    var showAddSheet by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
 
     FavoritesContent(
         uiState = state,
         onLocationSelected = onLocationSelected,
         onRemoveFavorite = viewModel::removeFavorite,
-        onNavigateToAdd = onNavigateToAdd,
+        onNavigateToAdd = { showAddSheet = true },
         onNavigateBack = onNavigateBack,
         modifier = modifier
     )
+
+    if (showAddSheet) {
+        AddFavoriteLocationBottomSheet(
+            onDismissRequest = { showAddSheet = false },
+            onAddLocation = { loc ->
+                viewModel.addFavorite(loc)
+            }
+        )
+    }
 }
 
 /**
@@ -523,6 +548,221 @@ private fun FavoritesScreenLightPreview() {
                 onNavigateToAdd = {},
                 onNavigateBack = {}
             )
+        }
+    }
+}
+
+/**
+ * Interactive Modal Bottom Sheet to search and add new favorite locations seamlessly.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddFavoriteLocationBottomSheet(
+    onDismissRequest: () -> Unit,
+    onAddLocation: (WeatherLocation) -> Unit
+) {
+    var searchQuery by remember { mutableStateOf("") }
+
+    val popularSuggestions = remember {
+        listOf(
+            WeatherLocation("vn_danang", "Đà Nẵng", "Việt Nam", "Thành phố Đà Nẵng", 16.0544, 108.2022, "Asia/Ho_Chi_Minh"),
+            WeatherLocation("vn_haiphong", "Hải Phòng", "Việt Nam", "Thành phố Hải Phòng", 20.8449, 106.6881, "Asia/Ho_Chi_Minh"),
+            WeatherLocation("vn_hcm", "TP. Hồ Chí Minh", "Việt Nam", "Thành phố Hồ Chí Minh", 10.8231, 106.6297, "Asia/Ho_Chi_Minh"),
+            WeatherLocation("vn_nhatrang", "Nha Trang", "Việt Nam", "Khánh Hòa", 12.2388, 109.1967, "Asia/Ho_Chi_Minh"),
+            WeatherLocation("vn_dalat", "Đà Lạt", "Việt Nam", "Lâm Đồng", 11.9404, 108.4583, "Asia/Ho_Chi_Minh"),
+            WeatherLocation("vn_hue", "Huế", "Việt Nam", "Thừa Thiên Huế", 16.4637, 107.5909, "Asia/Ho_Chi_Minh"),
+            WeatherLocation("vn_cantho", "Cần Thơ", "Việt Nam", "Thành phố Cần Thơ", 10.0452, 105.7469, "Asia/Ho_Chi_Minh"),
+            WeatherLocation("vn_vungtau", "Vũng Tàu", "Việt Nam", "Bà Rịa - Vũng Tàu", 10.3460, 107.0843, "Asia/Ho_Chi_Minh"),
+            WeatherLocation("vn_quangninh", "Hạ Long", "Việt Nam", "Quảng Ninh", 20.9505, 107.0734, "Asia/Ho_Chi_Minh"),
+            WeatherLocation("tokyo", "Tokyo", "Japan", "Tokyo", 35.6762, 139.6503, "Asia/Tokyo"),
+            WeatherLocation("paris", "Paris", "France", "Île-de-France", 48.8566, 2.3522, "Europe/Paris"),
+            WeatherLocation("london", "London", "United Kingdom", "England", 51.5074, -0.1278, "Europe/London"),
+            WeatherLocation("newyork", "New York", "USA", "New York", 40.7128, -74.0060, "America/New_York"),
+            WeatherLocation("sydney", "Sydney", "Australia", "New South Wales", -33.8688, 151.2093, "Australia/Sydney")
+        )
+    }
+
+    val searchResults = remember(searchQuery) {
+        if (searchQuery.isBlank()) {
+            emptyList()
+        } else {
+            com.example.weathernow.data.local.VietnamLocationsCatalog.search(searchQuery)
+        }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 8.dp)
+                .heightIn(max = 560.dp)
+        ) {
+            Text(
+                text = "Thêm địa điểm yêu thích",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Search input field
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Tìm tỉnh thành (ví dụ: Đà Nẵng, Huế, Đà Lạt...)") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotBlank()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Clear",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                )
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (searchQuery.isNotBlank()) {
+                Text(
+                    text = "Kết quả tìm kiếm (${searchResults.size})",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(searchResults) { loc ->
+                        Surface(
+                            onClick = {
+                                onAddLocation(loc)
+                                onDismissRequest()
+                            },
+                            shape = RoundedCornerShape(14.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        Icons.Default.LocationOn,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text = loc.name,
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = loc.formattedArea.ifBlank { loc.country ?: "" },
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = "Thêm",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                Text(
+                    text = "Gợi ý tỉnh thành phổ biến",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(popularSuggestions) { loc ->
+                        Surface(
+                            onClick = {
+                                onAddLocation(loc)
+                                onDismissRequest()
+                            },
+                            shape = RoundedCornerShape(14.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        Icons.Default.LocationOn,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text = loc.name,
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = loc.formattedArea.ifBlank { loc.country ?: "" },
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = "Thêm",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

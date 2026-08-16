@@ -143,13 +143,17 @@ class SearchViewModel(
     fun toggleFavorite(location: WeatherLocation) {
         viewModelScope.launch {
             val newFavStatus = locationRepository.toggleFavorite(location)
+            val coordId = "${String.format(java.util.Locale.US, "%.2f", location.latitude)}_${String.format(java.util.Locale.US, "%.2f", location.longitude)}"
             if (newFavStatus) {
-                weatherRepository.addFavoriteLocation(location.copy(isFavorite = true))
+                weatherRepository.addFavoriteLocation(location.copy(id = coordId, isFavorite = true))
             } else {
-                weatherRepository.removeFavoriteLocation(location.id ?: location.name)
+                weatherRepository.removeFavoriteLocation(coordId)
+                if (location.name.isNotBlank()) {
+                    weatherRepository.removeFavoriteLocation(location.name)
+                }
             }
             val updated = _uiState.value.searchResults.map {
-                if (it.id == location.id || (it.latitude == location.latitude && it.longitude == location.longitude)) {
+                if (it.id == location.id || (it.latitude == location.latitude && it.longitude == location.longitude) || it.name.equals(location.name, ignoreCase = true)) {
                     it.copy(isFavorite = newFavStatus)
                 } else it
             }

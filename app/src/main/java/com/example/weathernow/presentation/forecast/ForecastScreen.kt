@@ -22,6 +22,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Air
 import androidx.compose.material.icons.filled.Compress
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Visibility
@@ -96,6 +98,7 @@ data class ForecastDetailUiState(
     val sunriseTime: String = "05:42 AM",
     val sunsetTime: String = "18:28 PM",
     val solarNoonTime: String = "12:05 PM",
+    val isFavorite: Boolean = false,
     val isLoading: Boolean = false
 )
 
@@ -107,12 +110,14 @@ class ForecastViewModel(
 
     fun loadForecast(lat: Double, lon: Double, name: String, adminArea: String? = null) {
         viewModelScope.launch {
+            val isFav = weatherRepository.isFavoriteLocation(lat, lon)
             _uiState.value = _uiState.value.copy(
                 isLoading = true,
                 latitude = lat,
                 longitude = lon,
                 locationName = name,
-                adminArea = adminArea
+                adminArea = adminArea,
+                isFavorite = isFav
             )
 
             try {
@@ -169,11 +174,35 @@ class ForecastViewModel(
                     pressureHpa = pressure,
                     sunriseTime = sunriseStr,
                     sunsetTime = sunsetStr,
+                    isFavorite = isFav,
                     isLoading = false
                 )
             } catch (_: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false)
             }
+        }
+    }
+
+    fun toggleFavorite() {
+        viewModelScope.launch {
+            val state = _uiState.value
+            val newFav = !state.isFavorite
+            if (newFav) {
+                val location = com.example.weathernow.domain.model.WeatherLocation(
+                    id = "${String.format(java.util.Locale.US, "%.2f", state.latitude)}_${String.format(java.util.Locale.US, "%.2f", state.longitude)}",
+                    name = state.locationName,
+                    country = null,
+                    adminArea = state.adminArea,
+                    latitude = state.latitude,
+                    longitude = state.longitude,
+                    isFavorite = true
+                )
+                weatherRepository.addFavoriteLocation(location)
+            } else {
+                val id = "${String.format(java.util.Locale.US, "%.2f", state.latitude)}_${String.format(java.util.Locale.US, "%.2f", state.longitude)}"
+                weatherRepository.removeFavoriteLocation(id)
+            }
+            _uiState.value = _uiState.value.copy(isFavorite = newFav)
         }
     }
 }
@@ -200,6 +229,7 @@ fun ForecastScreen(
     ForecastContent(
         uiState = uiState,
         onRefresh = { viewModel.loadForecast(latitude, longitude, locationName, adminArea) },
+        onToggleFavorite = viewModel::toggleFavorite,
         onNavigateBack = onNavigateBack,
         modifier = modifier
     )
@@ -213,6 +243,7 @@ fun ForecastScreen(
 fun ForecastContent(
     uiState: ForecastDetailUiState,
     onRefresh: () -> Unit,
+    onToggleFavorite: () -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -253,6 +284,13 @@ fun ForecastContent(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onToggleFavorite) {
+                        Icon(
+                            imageVector = if (uiState.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = "Favorite",
+                            tint = if (uiState.isFavorite) Color(0xFFFF5252) else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                     IconButton(onClick = {
                         val displayTitle = if (uiState.adminArea.isNullOrBlank()) {
                             uiState.locationName
@@ -784,6 +822,7 @@ private fun ForecastScreenDarkPreview() {
             ForecastContent(
                 uiState = ForecastDetailUiState(),
                 onRefresh = {},
+                onToggleFavorite = {},
                 onNavigateBack = {}
             )
         }
@@ -798,6 +837,7 @@ private fun ForecastScreenLightPreview() {
             ForecastContent(
                 uiState = ForecastDetailUiState(),
                 onRefresh = {},
+                onToggleFavorite = {},
                 onNavigateBack = {}
             )
         }

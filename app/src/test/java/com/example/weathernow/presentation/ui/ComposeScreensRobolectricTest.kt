@@ -110,7 +110,8 @@ class ComposeScreensRobolectricTest {
                     ForecastContent(
                         uiState = forecastState,
                         onNavigateBack = {},
-                        onRefresh = {}
+                        onRefresh = {},
+                        onToggleFavorite = {}
                     )
                 }
             }
