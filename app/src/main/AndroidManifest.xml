@@ -3,6 +3,9 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".WeatherNowApp"
@@ -21,6 +24,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <receiver
+            android:name=".core.worker.WeatherTestNotificationReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.example.weathernow.TEST_NOTIFICATION" />
+                <action android:name="com.example.weathernow.TEST_SYNC" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>
