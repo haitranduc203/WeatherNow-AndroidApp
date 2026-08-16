@@ -243,10 +243,11 @@ fun HomeContent(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Column {
-                                val locationTitle = if (uiState.location.country.isNullOrBlank() || uiState.location.name.contains(uiState.location.country!!)) {
+                                val country = uiState.location.country
+                                val locationTitle = if (country.isNullOrBlank() || uiState.location.name.contains(country)) {
                                     uiState.location.name
                                 } else {
-                                    "${uiState.location.name}, ${uiState.location.country}"
+                                    "${uiState.location.name}, $country"
                                 }
                                 Text(
                                     text = locationTitle,
@@ -385,6 +386,15 @@ private fun HeroWeatherCard(
 ) {
     val strings = LocalWeatherStrings.current
     val currentLang = LocalAppLanguage.current
+    val preferences by com.example.weathernow.presentation.settings.UserPreferencesRepository.preferencesFlow.collectAsState()
+    val formattedTemp = com.example.weathernow.presentation.util.WeatherUnitsFormatter.formatTemperature(
+        currentWeather.temperatureCelsius,
+        preferences.temperatureUnit
+    )
+    val formattedFeelsLike = com.example.weathernow.presentation.util.WeatherUnitsFormatter.formatTemperature(
+        currentWeather.feelsLikeCelsius,
+        preferences.temperatureUnit
+    )
 
     GlassCard(
         modifier = modifier
@@ -404,7 +414,7 @@ private fun HeroWeatherCard(
             )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = "${currentWeather.temperatureCelsius.toInt()}°C",
+                text = formattedTemp,
                 fontSize = 76.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -418,7 +428,7 @@ private fun HeroWeatherCard(
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "${strings.feelsLike(currentWeather.feelsLikeCelsius.toInt())}  •  ${strings.humidity} ${currentWeather.humidityPercent ?: 0}%",
+                text = "${strings.feelsLikeLabel} $formattedFeelsLike  •  ${strings.humidity} ${currentWeather.humidityPercent ?: 0}%",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -444,6 +454,11 @@ private fun KeyWeatherMetricsGrid(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            val preferences by com.example.weathernow.presentation.settings.UserPreferencesRepository.preferencesFlow.collectAsState()
+            val formattedWind = com.example.weathernow.presentation.util.WeatherUnitsFormatter.formatWindSpeed(
+                currentWeather.windSpeedKmh ?: 0.0,
+                preferences.windSpeedUnit
+            )
             MetricTile(
                 label = strings.humidity,
                 value = "${currentWeather.humidityPercent ?: 0}%",
@@ -454,7 +469,7 @@ private fun KeyWeatherMetricsGrid(
             )
             MetricTile(
                 label = strings.windSpeed,
-                value = "${currentWeather.windSpeedKmh?.toInt() ?: 0} km/h",
+                value = formattedWind,
                 subtitle = "NE ${currentWeather.windDirectionDegrees ?: 0}°",
                 icon = Icons.Default.Air,
                 iconTint = MaterialTheme.colorScheme.primary,
@@ -543,6 +558,7 @@ private fun HourlyForecastSection(
 ) {
     val strings = LocalWeatherStrings.current
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())
+    val preferences by com.example.weathernow.presentation.settings.UserPreferencesRepository.preferencesFlow.collectAsState()
 
     GlassCard(
         modifier = modifier.fillMaxWidth(),
@@ -562,6 +578,11 @@ private fun HourlyForecastSection(
                 items(hourlyList) { hourly ->
                     val formattedTime = timeFormatter.format(hourly.time)
                     val rainProb = hourly.precipitationProbabilityPercent ?: 0
+                    val tempStr = com.example.weathernow.presentation.util.WeatherUnitsFormatter.formatTemperature(
+                        hourly.temperatureCelsius,
+                        preferences.temperatureUnit,
+                        includeUnitSymbol = false
+                    )
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
@@ -593,7 +614,7 @@ private fun HourlyForecastSection(
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "${hourly.temperatureCelsius.toInt()}°",
+                            text = tempStr,
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -613,9 +634,10 @@ private fun DailyForecastSection(
     modifier: Modifier = Modifier
 ) {
     val currentLang = LocalAppLanguage.current
-    val locale = if (currentLang == AppLanguage.VIETNAMESE) Locale("vi", "VN") else Locale.ENGLISH
+    val locale = if (currentLang == AppLanguage.VIETNAMESE) Locale.forLanguageTag("vi-VN") else Locale.ENGLISH
     val dayFormatter = DateTimeFormatter.ofPattern("EEE", locale)
     val strings = LocalWeatherStrings.current
+    val preferences by com.example.weathernow.presentation.settings.UserPreferencesRepository.preferencesFlow.collectAsState()
 
     GlassCard(
         modifier = modifier.fillMaxWidth(),
@@ -635,6 +657,16 @@ private fun DailyForecastSection(
                     dayFormatter.format(daily.date).replaceFirstChar { it.uppercase() }
                 }
                 val rainChance = daily.precipitationProbabilityPercent ?: 0
+                val minTempStr = com.example.weathernow.presentation.util.WeatherUnitsFormatter.formatTemperature(
+                    daily.minTemperatureCelsius,
+                    preferences.temperatureUnit,
+                    includeUnitSymbol = false
+                )
+                val maxTempStr = com.example.weathernow.presentation.util.WeatherUnitsFormatter.formatTemperature(
+                    daily.maxTemperatureCelsius,
+                    preferences.temperatureUnit,
+                    includeUnitSymbol = false
+                )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -658,10 +690,10 @@ private fun DailyForecastSection(
                         Spacer(modifier = Modifier.width(36.dp))
                     }
                     Text(
-                        text = "${daily.minTemperatureCelsius.toInt()}°",
+                        text = minTempStr,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.width(28.dp)
+                        modifier = Modifier.width(32.dp)
                     )
                     // Stitch Gradient Temperature Range Bar
                     Box(
@@ -673,10 +705,10 @@ private fun DailyForecastSection(
                             .background(TemperatureRangeGradient)
                     )
                     Text(
-                        text = "${daily.maxTemperatureCelsius.toInt()}°",
+                        text = maxTempStr,
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.width(28.dp)
+                        modifier = Modifier.width(32.dp)
                     )
                 }
             }

@@ -8,10 +8,16 @@ import com.example.weathernow.data.repository.WeatherRepositoryImpl
 import com.example.weathernow.domain.repository.LocationRepository
 import com.example.weathernow.domain.repository.WeatherRepository
 
+import com.example.weathernow.data.local.datastore.UserPreferencesDataStore
+import com.example.weathernow.data.local.datastore.userPreferencesDataStore
+import com.example.weathernow.data.repository.UserPreferencesRepositoryImpl
+import com.example.weathernow.domain.repository.UserPreferencesRepository
+
 interface AppContainer {
     val database: WeatherDatabase
     val weatherRepository: WeatherRepository
     val locationRepository: LocationRepository
+    val userPreferencesRepository: UserPreferencesRepository
 }
 
 class DefaultAppContainer(private val context: Context) : AppContainer {
@@ -36,5 +42,10 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
             favoriteLocationDao = database.favoriteLocationDao(),
             recentSearchDao = database.recentSearchDao()
         )
+    }
+
+    override val userPreferencesRepository: UserPreferencesRepository by lazy {
+        val dataStore = UserPreferencesDataStore(context.userPreferencesDataStore)
+        UserPreferencesRepositoryImpl(dataStore)
     }
 }

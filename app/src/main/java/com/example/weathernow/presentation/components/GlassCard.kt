@@ -19,6 +19,7 @@ import com.example.weathernow.theme.GlassCardBackgroundDark
 import com.example.weathernow.theme.GlassCardBackgroundLight
 import com.example.weathernow.theme.GlassCardBorderDark
 import com.example.weathernow.theme.GlassCardBorderLight
+import com.example.weathernow.theme.WeatherBackgroundDark
 import com.example.weathernow.theme.WeatherNowTheme
 
 /**
@@ -35,7 +36,7 @@ fun GlassCard(
     contentPadding: Dp = 16.dp,
     content: @Composable BoxScope.() -> Unit
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = androidx.compose.material3.MaterialTheme.colorScheme.background == WeatherBackgroundDark
     val resolvedBackground = backgroundColor ?: if (isDark) GlassCardBackgroundDark else GlassCardBackgroundLight
     val resolvedBorder = borderColor ?: if (isDark) GlassCardBorderDark else GlassCardBorderLight
 

@@ -74,32 +74,66 @@ object UserPreferencesRepository {
     private val _preferencesFlow = MutableStateFlow(UserPreferences())
     val preferencesFlow: StateFlow<UserPreferences> = _preferencesFlow.asStateFlow()
 
+    private fun getRepo(): com.example.weathernow.domain.repository.UserPreferencesRepository? {
+        return try {
+            val app = com.example.weathernow.WeatherNowApp.instance
+            app?.container?.userPreferencesRepository
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    fun syncFromDataStore(prefs: UserPreferences) {
+        _preferencesFlow.value = prefs
+    }
+
     fun updateTheme(theme: AppTheme) {
         _preferencesFlow.value = _preferencesFlow.value.copy(theme = theme)
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            getRepo()?.setTheme(theme)
+        }
     }
 
     fun updateLanguage(language: AppLanguage) {
         _preferencesFlow.value = _preferencesFlow.value.copy(language = language)
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            getRepo()?.setLanguage(language)
+        }
     }
 
     fun updateTemperatureUnit(unit: TemperatureUnit) {
         _preferencesFlow.value = _preferencesFlow.value.copy(temperatureUnit = unit)
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            getRepo()?.setTemperatureUnit(unit)
+        }
     }
 
     fun updateWindSpeedUnit(unit: WindSpeedUnit) {
         _preferencesFlow.value = _preferencesFlow.value.copy(windSpeedUnit = unit)
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            getRepo()?.setWindSpeedUnit(unit)
+        }
     }
 
     fun toggleDailySummary(enabled: Boolean) {
         _preferencesFlow.value = _preferencesFlow.value.copy(dailyNotificationEnabled = enabled)
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            getRepo()?.setDailyNotificationEnabled(enabled)
+        }
     }
 
     fun toggleSevereAlerts(enabled: Boolean) {
         _preferencesFlow.value = _preferencesFlow.value.copy(severeWeatherAlertsEnabled = enabled)
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            getRepo()?.setSevereAlertsEnabled(enabled)
+        }
     }
 
     fun toggleBackgroundSync(enabled: Boolean) {
         _preferencesFlow.value = _preferencesFlow.value.copy(backgroundRefreshEnabled = enabled)
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            getRepo()?.setBackgroundRefreshEnabled(enabled)
+        }
     }
 }
 

@@ -102,7 +102,8 @@ val AtmosphericGradientLight = Brush.verticalGradient(
 
 @Composable
 fun atmosphericGradient(): Brush {
-    return if (isSystemInDarkTheme()) AtmosphericGradientDark else AtmosphericGradientLight
+    val isDark = androidx.compose.material3.MaterialTheme.colorScheme.background == WeatherBackgroundDark
+    return if (isDark) AtmosphericGradientDark else AtmosphericGradientLight
 }
 
 val HeroWeatherGradient = Brush.linearGradient(

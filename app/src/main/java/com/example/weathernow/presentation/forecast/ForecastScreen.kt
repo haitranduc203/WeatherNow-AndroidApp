@@ -370,8 +370,14 @@ private fun HourlyTrendChartCard(
                             size = 28.dp
                         )
                         Spacer(modifier = Modifier.height(6.dp))
+                        val preferences by com.example.weathernow.presentation.settings.UserPreferencesRepository.preferencesFlow.collectAsState()
+                        val formattedHourlyTemp = com.example.weathernow.presentation.util.WeatherUnitsFormatter.formatTemperature(
+                            hourly.temperatureCelsius,
+                            preferences.temperatureUnit,
+                            includeUnitSymbol = true
+                        )
                         Text(
-                            text = "${hourly.temperatureCelsius.toInt()}°C",
+                            text = formattedHourlyTemp,
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -416,6 +422,16 @@ private fun DetailedMetricsGrid(
 ) {
     val strings = LocalWeatherStrings.current
 
+    val preferences by com.example.weathernow.presentation.settings.UserPreferencesRepository.preferencesFlow.collectAsState()
+    val formattedFeelsLike = com.example.weathernow.presentation.util.WeatherUnitsFormatter.formatTemperature(
+        uiState.feelsLikeCelsius,
+        preferences.temperatureUnit
+    )
+    val formattedWindGusts = com.example.weathernow.presentation.util.WeatherUnitsFormatter.formatWindSpeed(
+        uiState.windGustsKmh,
+        preferences.windSpeedUnit
+    )
+
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -426,7 +442,7 @@ private fun DetailedMetricsGrid(
         ) {
             DetailedMetricTile(
                 title = strings.feelsLikeLabel,
-                value = "${uiState.feelsLikeCelsius.toInt()}°C",
+                value = formattedFeelsLike,
                 subtitle = strings.thermalComfort,
                 icon = Icons.Default.WbSunny,
                 iconTint = MaterialTheme.colorScheme.tertiary,
@@ -434,7 +450,7 @@ private fun DetailedMetricsGrid(
             )
             DetailedMetricTile(
                 title = strings.windGusts,
-                value = "${uiState.windGustsKmh.toInt()} km/h",
+                value = formattedWindGusts,
                 subtitle = strings.windDirectionLabel(uiState.windDirectionDegrees),
                 icon = Icons.Default.Air,
                 iconTint = MaterialTheme.colorScheme.secondary,
@@ -607,9 +623,10 @@ private fun Extended7DayForecastCard(
     modifier: Modifier = Modifier
 ) {
     val currentLang = LocalAppLanguage.current
-    val locale = if (currentLang == AppLanguage.VIETNAMESE) Locale("vi", "VN") else Locale.ENGLISH
+    val locale = if (currentLang == AppLanguage.VIETNAMESE) Locale.forLanguageTag("vi-VN") else Locale.ENGLISH
     val dayFormatter = DateTimeFormatter.ofPattern("EEEE", locale)
     val strings = LocalWeatherStrings.current
+    val preferences by com.example.weathernow.presentation.settings.UserPreferencesRepository.preferencesFlow.collectAsState()
 
     GlassCard(
         modifier = modifier.fillMaxWidth(),
@@ -661,11 +678,21 @@ private fun Extended7DayForecastCard(
                             .clip(CircleShape)
                             .background(TemperatureRangeGradient)
                     )
+                    val minTempStr = com.example.weathernow.presentation.util.WeatherUnitsFormatter.formatTemperature(
+                        daily.minTemperatureCelsius,
+                        preferences.temperatureUnit,
+                        includeUnitSymbol = false
+                    )
+                    val maxTempStr = com.example.weathernow.presentation.util.WeatherUnitsFormatter.formatTemperature(
+                        daily.maxTemperatureCelsius,
+                        preferences.temperatureUnit,
+                        includeUnitSymbol = false
+                    )
                     Text(
-                        text = "${daily.minTemperatureCelsius.toInt()}° / ${daily.maxTemperatureCelsius.toInt()}°",
+                        text = "$minTempStr / $maxTempStr",
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.width(64.dp)
+                        modifier = Modifier.width(68.dp)
                     )
                 }
             }
