@@ -217,6 +217,7 @@ fun ForecastContent(
     modifier: Modifier = Modifier
 ) {
     val strings = LocalWeatherStrings.current
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -252,7 +253,34 @@ fun ForecastContent(
                     }
                 },
                 actions = {
-                    IconButton(onClick = {}) {
+                    IconButton(onClick = {
+                        val displayTitle = if (uiState.adminArea.isNullOrBlank()) {
+                            uiState.locationName
+                        } else if (uiState.locationName.contains(uiState.adminArea)) {
+                            uiState.locationName
+                        } else {
+                            "${uiState.locationName}, ${uiState.adminArea}"
+                        }
+                        val today = uiState.dailyList.firstOrNull()
+                        val tempRange = if (today != null) " (${today.minTemperatureCelsius.toInt()}°C - ${today.maxTemperatureCelsius.toInt()}°C)" else ""
+                        val shareText = buildString {
+                            append("🌤️ Thời tiết tại $displayTitle:\n")
+                            append("🌡️ Cảm giác như: ${uiState.feelsLikeCelsius.toInt()}°C$tempRange\n")
+                            append("💧 Độ ẩm: ${uiState.humidityPercent}%\n")
+                            append("💨 Gió: ${uiState.windGustsKmh.toInt()} km/h (Hướng ${uiState.windDirectionDegrees}°)\n")
+                            append("☀️ Chỉ số UV: ${uiState.uvIndex.toInt()} | Áp suất: ${uiState.pressureHpa.toInt()} hPa\n")
+                            append("🌅 Bình minh: ${uiState.sunriseTime} | 🌇 Hoàng hôn: ${uiState.sunsetTime}\n")
+                            append("\n📲 Cập nhật từ ứng dụng WeatherNow")
+                        }
+
+                        val sendIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                            putExtra(android.content.Intent.EXTRA_TEXT, shareText)
+                            putExtra(android.content.Intent.EXTRA_TITLE, "Thời tiết $displayTitle")
+                            type = "text/plain"
+                        }
+                        val shareIntent = android.content.Intent.createChooser(sendIntent, "Chia sẻ thời tiết $displayTitle")
+                        context.startActivity(shareIntent)
+                    }) {
                         Icon(Icons.Default.Share, contentDescription = "Share", tint = MaterialTheme.colorScheme.onSurface)
                     }
                     IconButton(onClick = onRefresh) {
