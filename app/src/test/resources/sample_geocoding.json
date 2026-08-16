@@ -1,0 +1,32 @@
+{
+  "results": [
+    {
+      "id": 1581130,
+      "name": "Hà Nội",
+      "latitude": 21.0285,
+      "longitude": 105.8542,
+      "elevation": 15.0,
+      "feature_code": "PPLA",
+      "country_code": "VN",
+      "admin1_id": 1581129,
+      "timezone": "Asia/Bangkok",
+      "population": 8053663,
+      "country_id": 1562822,
+      "country": "Việt Nam",
+      "admin1": "Thủ đô Hà Nội"
+    },
+    {
+      "id": 1566346,
+      "name": "Thái Bình",
+      "latitude": 20.4500,
+      "longitude": 106.3400,
+      "elevation": 5.0,
+      "feature_code": "PPLA",
+      "country_code": "VN",
+      "timezone": "Asia/Bangkok",
+      "country": "Việt Nam",
+      "admin1": "Tỉnh Hưng Yên"
+    }
+  ],
+  "generationtime_ms": 0.456
+}
