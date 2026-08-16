@@ -679,13 +679,17 @@ private fun SolarCycleArcCard(
 @Composable
 private fun Extended7DayForecastCard(
     dailyList: List<DailyForecast>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    currentTempCelsius: Double? = null
 ) {
     val currentLang = LocalAppLanguage.current
     val locale = if (currentLang == AppLanguage.VIETNAMESE) Locale.forLanguageTag("vi-VN") else Locale.ENGLISH
     val dayFormatter = DateTimeFormatter.ofPattern("EEEE", locale)
     val strings = LocalWeatherStrings.current
     val preferences by com.example.weathernow.presentation.settings.UserPreferencesRepository.preferencesFlow.collectAsState()
+
+    val weekMin = dailyList.minOfOrNull { it.minTemperatureCelsius } ?: 20.0
+    val weekMax = dailyList.maxOfOrNull { it.maxTemperatureCelsius } ?: 35.0
 
     GlassCard(
         modifier = modifier.fillMaxWidth(),
@@ -699,12 +703,23 @@ private fun Extended7DayForecastCard(
                 color = MaterialTheme.colorScheme.onSurface
             )
             dailyList.forEach { daily ->
-                val dayLabel = if (daily.date == LocalDate.now()) {
+                val isToday = daily.date == LocalDate.now()
+                val dayLabel = if (isToday) {
                     if (currentLang == AppLanguage.VIETNAMESE) "Hôm nay" else "Today"
                 } else {
                     dayFormatter.format(daily.date).replaceFirstChar { it.uppercase() }
                 }
                 val rainChance = daily.precipitationProbabilityPercent ?: 0
+                val minTempStr = com.example.weathernow.presentation.util.WeatherUnitsFormatter.formatTemperature(
+                    daily.minTemperatureCelsius,
+                    preferences.temperatureUnit,
+                    includeUnitSymbol = false
+                )
+                val maxTempStr = com.example.weathernow.presentation.util.WeatherUnitsFormatter.formatTemperature(
+                    daily.maxTemperatureCelsius,
+                    preferences.temperatureUnit,
+                    includeUnitSymbol = false
+                )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -712,46 +727,48 @@ private fun Extended7DayForecastCard(
                 ) {
                     Text(
                         text = dayLabel,
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium
+                        ),
                         color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.width(90.dp)
+                        modifier = Modifier.width(88.dp)
                     )
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.width(80.dp)
+                        modifier = Modifier.width(64.dp)
                     ) {
                         WeatherConditionIcon(condition = daily.condition, size = 22.dp)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "$rainChance%",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.secondary
-                        )
+                        if (rainChance > 10) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "$rainChance%",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        }
                     }
-                    // Temperature Range Bar
-                    Box(
+                    Text(
+                        text = minTempStr,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.width(30.dp)
+                    )
+                    // Modern Dynamic Temperature Range Bar (Apple Weather / M3 Style)
+                    com.example.weathernow.presentation.components.TemperatureRangeBar(
+                        minTemp = daily.minTemperatureCelsius,
+                        maxTemp = daily.maxTemperatureCelsius,
+                        weekMinTemp = weekMin,
+                        weekMaxTemp = weekMax,
+                        currentTemp = if (isToday) currentTempCelsius else null,
                         modifier = Modifier
                             .weight(1f)
-                            .height(6.dp)
                             .padding(horizontal = 8.dp)
-                            .clip(CircleShape)
-                            .background(TemperatureRangeGradient)
-                    )
-                    val minTempStr = com.example.weathernow.presentation.util.WeatherUnitsFormatter.formatTemperature(
-                        daily.minTemperatureCelsius,
-                        preferences.temperatureUnit,
-                        includeUnitSymbol = false
-                    )
-                    val maxTempStr = com.example.weathernow.presentation.util.WeatherUnitsFormatter.formatTemperature(
-                        daily.maxTemperatureCelsius,
-                        preferences.temperatureUnit,
-                        includeUnitSymbol = false
                     )
                     Text(
-                        text = "$minTempStr / $maxTempStr",
+                        text = maxTempStr,
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.width(68.dp)
+                        modifier = Modifier.width(30.dp)
                     )
                 }
             }

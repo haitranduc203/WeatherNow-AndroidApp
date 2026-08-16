@@ -409,9 +409,12 @@ fun HomeContent(
                                 HourlyForecastSection(hourlyList = uiState.hourlyForecast)
                             }
 
-                            // 4. 7-Day Forecast with Gradient Temperature Sliders (Stitch Component)
+                            // 4. 7-Day Forecast with Dynamic Temperature Sliders (Stitch Component)
                             item {
-                                DailyForecastSection(dailyList = uiState.dailyForecast)
+                                DailyForecastSection(
+                                    dailyList = uiState.dailyForecast,
+                                    currentTempCelsius = uiState.currentWeather.temperatureCelsius
+                                )
                             }
 
                             // Extra bottom padding for Bottom Navigation Bar
@@ -678,12 +681,13 @@ private fun HourlyForecastSection(
 }
 
 /**
- * 7-Day Forecast vertical list with temperature range gradient sliders.
+ * 7-Day Forecast vertical list with dynamic temperature range gradient bars.
  */
 @Composable
 private fun DailyForecastSection(
     dailyList: List<DailyForecast>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    currentTempCelsius: Double? = null
 ) {
     val currentLang = LocalAppLanguage.current
     val locale = if (currentLang == AppLanguage.VIETNAMESE) Locale.forLanguageTag("vi-VN") else Locale.ENGLISH
@@ -691,19 +695,23 @@ private fun DailyForecastSection(
     val strings = LocalWeatherStrings.current
     val preferences by com.example.weathernow.presentation.settings.UserPreferencesRepository.preferencesFlow.collectAsState()
 
+    val weekMin = dailyList.minOfOrNull { it.minTemperatureCelsius } ?: 20.0
+    val weekMax = dailyList.maxOfOrNull { it.maxTemperatureCelsius } ?: 35.0
+
     GlassCard(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         contentPadding = 16.dp
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(
                 text = strings.forecast7d,
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.onSurface
             )
             dailyList.forEach { daily ->
-                val dayLabel = if (daily.date == LocalDate.now()) {
+                val isToday = daily.date == LocalDate.now()
+                val dayLabel = if (isToday) {
                     if (currentLang == AppLanguage.VIETNAMESE) "Hôm nay" else "Today"
                 } else {
                     dayFormatter.format(daily.date).replaceFirstChar { it.uppercase() }
@@ -726,7 +734,9 @@ private fun DailyForecastSection(
                 ) {
                     Text(
                         text = dayLabel,
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium
+                        ),
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.width(76.dp)
                     )
@@ -734,7 +744,7 @@ private fun DailyForecastSection(
                     if (rainChance > 10) {
                         Text(
                             text = "$rainChance%",
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                             color = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.width(36.dp)
                         )
@@ -745,22 +755,24 @@ private fun DailyForecastSection(
                         text = minTempStr,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.width(32.dp)
+                        modifier = Modifier.width(30.dp)
                     )
-                    // Stitch Gradient Temperature Range Bar
-                    Box(
+                    // Modern Dynamic Temperature Range Bar (Apple Weather / M3 Style)
+                    com.example.weathernow.presentation.components.TemperatureRangeBar(
+                        minTemp = daily.minTemperatureCelsius,
+                        maxTemp = daily.maxTemperatureCelsius,
+                        weekMinTemp = weekMin,
+                        weekMaxTemp = weekMax,
+                        currentTemp = if (isToday) currentTempCelsius else null,
                         modifier = Modifier
                             .weight(1f)
-                            .height(6.dp)
                             .padding(horizontal = 8.dp)
-                            .clip(CircleShape)
-                            .background(TemperatureRangeGradient)
                     )
                     Text(
                         text = maxTempStr,
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.width(32.dp)
+                        modifier = Modifier.width(30.dp)
                     )
                 }
             }
