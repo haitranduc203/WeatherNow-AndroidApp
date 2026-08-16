@@ -22,14 +22,21 @@ import com.example.weathernow.data.local.db.dao.FavoriteLocationDao
 import com.example.weathernow.data.local.db.entity.CachedWeatherEntity
 import com.example.weathernow.data.local.db.entity.FavoriteLocationEntity
 import com.example.weathernow.domain.model.WeatherCondition
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.map
 import java.time.Instant
 
 class WeatherRepositoryImpl(
     private val remoteDataSource: OpenMeteoRemoteDataSource = OpenMeteoRemoteDataSourceImpl(),
-    private val cachedWeatherDao: CachedWeatherDao? = WeatherDatabase.getInstanceOrNull()?.cachedWeatherDao(),
-    private val favoriteLocationDao: FavoriteLocationDao? = WeatherDatabase.getInstanceOrNull()?.favoriteLocationDao()
+    cachedWeatherDao: CachedWeatherDao? = null,
+    favoriteLocationDao: FavoriteLocationDao? = null
 ) : WeatherRepository {
+
+    private val cachedWeatherDao: CachedWeatherDao? = cachedWeatherDao
+        get() = field ?: WeatherDatabase.getInstanceOrNull()?.cachedWeatherDao()
+
+    private val favoriteLocationDao: FavoriteLocationDao? = favoriteLocationDao
+        get() = field ?: WeatherDatabase.getInstanceOrNull()?.favoriteLocationDao()
 
     private val defaultStarterFavorites = listOf(
         WeatherLocation("vn_hanoi", "Hà Nội", "Việt Nam", "Thủ đô Hà Nội", 21.0285, 105.8542, "Asia/Ho_Chi_Minh", true),
@@ -206,42 +213,47 @@ class WeatherRepositoryImpl(
         }
     }
 
-    override fun observeFavoriteLocations(): Flow<List<WeatherLocation>> {
-        val dao = favoriteLocationDao ?: return _fallbackFavorites.asStateFlow()
-        return dao.observeFavorites().map { entities ->
-            if (entities.isEmpty() && !initialFavoritesSeeded) {
-                initialFavoritesSeeded = true
-                // Seed initial starter favorites
-                defaultStarterFavorites.forEach { loc ->
-                    dao.insertFavorite(
-                        FavoriteLocationEntity(
-                            id = loc.id ?: "${loc.latitude}_${loc.longitude}",
-                            name = loc.name,
-                            country = loc.country,
-                            adminArea = loc.adminArea,
-                            latitude = loc.latitude,
-                            longitude = loc.longitude,
-                            timezone = loc.timezone,
-                            isPinned = false,
-                            createdAt = System.currentTimeMillis()
-                        )
-                    )
+    override fun observeFavoriteLocations(): Flow<List<WeatherLocation>> = flow {
+        val dao = favoriteLocationDao
+        if (dao == null) {
+            emitAll(_fallbackFavorites.asStateFlow())
+        } else {
+            emitAll(
+                dao.observeFavorites().map { entities ->
+                    if (entities.isEmpty() && !initialFavoritesSeeded) {
+                        initialFavoritesSeeded = true
+                        defaultStarterFavorites.forEach { loc ->
+                            dao.insertFavorite(
+                                FavoriteLocationEntity(
+                                    id = loc.id ?: "${loc.latitude}_${loc.longitude}",
+                                    name = loc.name,
+                                    country = loc.country,
+                                    adminArea = loc.adminArea,
+                                    latitude = loc.latitude,
+                                    longitude = loc.longitude,
+                                    timezone = loc.timezone,
+                                    isPinned = false,
+                                    createdAt = System.currentTimeMillis()
+                                )
+                            )
+                        }
+                        defaultStarterFavorites
+                    } else {
+                        entities.map { entity ->
+                            WeatherLocation(
+                                id = entity.id,
+                                name = entity.name,
+                                country = entity.country,
+                                adminArea = entity.adminArea,
+                                latitude = entity.latitude,
+                                longitude = entity.longitude,
+                                timezone = entity.timezone,
+                                isFavorite = true
+                            )
+                        }
+                    }
                 }
-                defaultStarterFavorites
-            } else {
-                entities.map { entity ->
-                    WeatherLocation(
-                        id = entity.id,
-                        name = entity.name,
-                        country = entity.country,
-                        adminArea = entity.adminArea,
-                        latitude = entity.latitude,
-                        longitude = entity.longitude,
-                        timezone = entity.timezone,
-                        isFavorite = true
-                    )
-                }
-            }
+            )
         }
     }
 

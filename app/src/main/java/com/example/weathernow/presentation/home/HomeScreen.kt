@@ -879,7 +879,7 @@ fun LocationSwitcherBottomSheet(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 LazyColumn(
-                    modifier = Modifier.heightIn(max = 240.dp),
+                    modifier = Modifier.heightIn(max = 360.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(favoriteLocations) { loc ->
@@ -910,7 +910,11 @@ fun LocationSwitcherBottomSheet(
                                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
-                                    val subtitle = loc.adminArea ?: loc.country ?: ""
+                                    val subtitle = if (loc.adminArea != null && loc.country != null && !loc.adminArea.contains(loc.country)) {
+                                        "${loc.adminArea}, ${loc.country}"
+                                    } else {
+                                        loc.adminArea ?: loc.country ?: ""
+                                    }
                                     if (subtitle.isNotBlank()) {
                                         Text(
                                             text = subtitle,

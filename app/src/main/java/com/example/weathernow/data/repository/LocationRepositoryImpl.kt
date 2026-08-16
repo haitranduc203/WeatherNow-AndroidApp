@@ -22,9 +22,15 @@ import kotlinx.coroutines.flow.map
 
 class LocationRepositoryImpl(
     private val remoteDataSource: OpenMeteoRemoteDataSource = OpenMeteoRemoteDataSourceImpl(),
-    private val favoriteLocationDao: FavoriteLocationDao? = WeatherDatabase.getInstanceOrNull()?.favoriteLocationDao(),
-    private val recentSearchDao: RecentSearchDao? = WeatherDatabase.getInstanceOrNull()?.recentSearchDao()
+    favoriteLocationDao: FavoriteLocationDao? = null,
+    recentSearchDao: RecentSearchDao? = null
 ) : LocationRepository {
+
+    private val favoriteLocationDao: FavoriteLocationDao? = favoriteLocationDao
+        get() = field ?: WeatherDatabase.getInstanceOrNull()?.favoriteLocationDao()
+
+    private val recentSearchDao: RecentSearchDao? = recentSearchDao
+        get() = field ?: WeatherDatabase.getInstanceOrNull()?.recentSearchDao()
 
     private val fallbackRecentSearches = MutableStateFlow<List<WeatherLocation>>(
         listOf(

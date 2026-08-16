@@ -32,7 +32,8 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
     override val weatherRepository: WeatherRepository by lazy {
         WeatherRepositoryImpl(
             remoteDataSource = remoteDataSource,
-            cachedWeatherDao = database.cachedWeatherDao()
+            cachedWeatherDao = database.cachedWeatherDao(),
+            favoriteLocationDao = database.favoriteLocationDao()
         )
     }
 
