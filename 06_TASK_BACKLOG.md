@@ -111,12 +111,12 @@
 - [x] UI smoke tests
 
 ## M10 Portfolio
-- [ ] Release build
-- [ ] No secrets
-- [ ] README
-- [ ] Architecture diagram
-- [ ] API documentation note
-- [ ] Screenshots
-- [ ] Tech stack
-- [ ] Limitations
-- [ ] Demo instructions
+- [x] Release build
+- [x] No secrets
+- [x] README
+- [x] Architecture diagram
+- [x] API documentation note
+- [x] Screenshots
+- [x] Tech stack
+- [x] Limitations
+- [x] Demo instructions
