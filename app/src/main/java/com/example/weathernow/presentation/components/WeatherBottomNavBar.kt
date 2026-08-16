@@ -64,8 +64,8 @@ fun WeatherBottomNavBar(
     onTabSelected: (NavigationTab) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isDark = isSystemInDarkTheme()
-    val bgColor = if (isDark) Color(0xFF10141A).copy(alpha = 0.88f) else Color(0xFFFFFFFF).copy(alpha = 0.92f)
+    val isDark = MaterialTheme.colorScheme.background == com.example.weathernow.theme.WeatherBackgroundDark
+    val bgColor = if (isDark) com.example.weathernow.theme.WeatherSurfaceDark.copy(alpha = 0.95f) else Color(0xFFFFFFFF).copy(alpha = 0.92f)
     val borderColor = if (isDark) GlassCardBorderDark else GlassCardBorderLight
 
     Surface(
