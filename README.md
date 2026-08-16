@@ -30,20 +30,65 @@
 
 ## Giao diện ứng dụng
 
+> Toàn bộ ảnh chụp thực tế 100% từ thiết bị **Realme (Android 13 / API 33)** thể hiện chi tiết từng tính năng và màn hình trong ứng dụng.
+
+### 1. Trải nghiệm Trang chủ & Khí tượng tổng quan
+
 <p align="center">
-  <img src="docs/screenshots/01_home_forecast.png" alt="Màn hình Trang chủ" width="31%" />
-  <img src="docs/screenshots/02_forecast_bezier_charts.png" alt="Biểu đồ Cubic Bézier 24h" width="31%" />
-  <img src="docs/screenshots/03_native_sharesheet.png" alt="Chia sẻ Báo cáo thời tiết" width="31%" />
+  <img src="docs/screenshots/01_home_screen.png" alt="01. Màn hình Trang chủ" width="31%" />
+  <img src="docs/screenshots/02_home_location_switcher.png" alt="02. Bộ đổi tỉnh thành phố" width="31%" />
+  <img src="docs/screenshots/03_home_7day_forecast.png" alt="03. Dự báo 7 ngày Dynamic Range" width="31%" />
 </p>
-<p align="center">
-  <img src="docs/screenshots/04_favorites_synced.png" alt="Danh sách Địa điểm Yêu thích" width="31%" />
-  <img src="docs/screenshots/05_location_switcher.png" alt="Bộ chọn địa điểm Trang chủ" width="31%" />
-  <img src="docs/screenshots/06_settings_dark_mode.png" alt="Màn hình Cài đặt & Dark Mode" width="31%" />
-</p>
+
+- **01. Màn hình Trang chủ (`HomeScreen`)**: Hiển thị thời tiết tức thời cho vị trí đang chọn (Hà Nội), thẻ thời tiết kính mờ, chỉ số UV, tốc độ gió, độ ẩm và dự báo 24 giờ cuộn ngang.
+- **02. Bộ chuyển đổi tỉnh/thành phố (`LocationSwitcherBottomSheet`)**: Bottom sheet chuyển nhanh giữa vị trí mặc định và toàn bộ các thành phố yêu thích đã lưu (Hạ Long, TP. Hồ Chí Minh, New York, Paris, Tokyo).
+- **03. Dự báo xu hướng 7 ngày (`7-Day Dynamic Range Bars`)**: Biểu diễn phổ nhiệt độ min/max tuần bằng thanh dải màu quang phổ co giãn động kèm chấm tròn thể hiện mức nhiệt hiện tại.
 
 ---
 
-## Chức năng
+### 2. Dự báo chuyên sâu, Biểu đồ Bézier & Chia sẻ Native
+
+<p align="center">
+  <img src="docs/screenshots/04_forecast_detail_24h.png" alt="04. Dự báo chi tiết 24h Bézier" width="31%" />
+  <img src="docs/screenshots/05_native_sharesheet.png" alt="05. Chia sẻ bản tin thời tiết" width="31%" />
+  <img src="docs/screenshots/06_forecast_detail_sun_metrics.png" alt="06. Quỹ đạo mặt trời & Áp suất" width="31%" />
+</p>
+
+- **04. Chi tiết 24h & Biểu đồ Bézier (`ForecastScreen`)**: Đường cong làm mịn Catmull-Rom Cubic Bézier spline trực quan hóa biến thiên nhiệt độ 24 giờ và biểu đồ cột lượng mưa.
+- **05. Chia sẻ Bản tin thời tiết (`Native Android ShareSheet`)**: Gọi `Intent.ACTION_SEND` hệ thống để định dạng và gửi nhanh bản tóm tắt thời tiết chi tiết kèm emoji qua Zalo, Messenger, SMS.
+- **06. Quỹ đạo Mặt Trời & Khí áp (`SunCycle & AtmosphericCards`)**: Trực quan hóa chu kỳ bình minh, chính ngọ, hoàng hôn; theo dõi áp suất khí quyển (hPa), tầm nhìn xa (km) và điểm sương.
+
+---
+
+### 3. Địa điểm Yêu thích & Tìm kiếm toàn quốc
+
+<p align="center">
+  <img src="docs/screenshots/07_favorites_screen.png" alt="07. Danh sách địa điểm yêu thích" width="31%" />
+  <img src="docs/screenshots/08_add_favorite_bottomsheet.png" alt="08. Thêm địa điểm yêu thích" width="31%" />
+  <img src="docs/screenshots/09_search_screen.png" alt="09. Tìm kiếm thành phố toàn cầu" width="31%" />
+</p>
+
+- **07. Danh sách Địa điểm Yêu thích (`FavoritesScreen`)**: Thẻ thời tiết thời gian thực cho từng địa điểm đã lưu, tự động tính giờ địa phương theo múi giờ, nhiệt độ và xóa một chạm.
+- **08. Thêm tỉnh/thành phố yêu thích (`AddFavoriteLocationSheet`)**: Gợi ý các đô thị lớn tại Việt Nam, tích hợp tìm kiếm nhanh theo 34 đơn vị hành chính và các tỉnh thành toàn quốc.
+- **09. Tìm kiếm toàn cầu & Lịch sử (`SearchScreen`)**: Tra cứu thành phố, thủ phủ quốc tế; quản lý danh sách lịch sử tra cứu gần đây với khả năng xóa từng mục hoặc xóa tất cả.
+
+---
+
+### 4. Cài đặt cá nhân hóa, Chế độ Tối OLED & Thông báo nền
+
+<p align="center">
+  <img src="docs/screenshots/10_settings_screen.png" alt="10. Màn hình Cài đặt" width="31%" />
+  <img src="docs/screenshots/12_home_dark_mode.png" alt="11. Trang chủ Chế độ tối" width="31%" />
+  <img src="docs/screenshots/07_workmanager_notification.png" alt="12. Thông báo thời tiết nền" width="31%" />
+</p>
+
+- **10. Màn hình Cài đặt (`SettingsScreen`)**: Tùy chỉnh đơn vị đo (°C/°F, km/h/mph/m/s, hPa/inHg), chuyển đổi song ngữ (Tiếng Việt / English), và chọn giao diện (Sáng / Tối / Theo hệ thống).
+- **11. Trang chủ Chế độ Tối (`Dark Theme OLED`)**: Giao diện tối tiết kiệm pin cho màn hình AMOLED với độ tương phản cao và hiệu ứng kính mờ sang trọng.
+- **12. Thông báo nền WorkManager (`System Notification Alert`)**: Tác vụ chạy ngầm định kỳ 3 giờ một lần cập nhật dữ liệu và đẩy thông báo trạng thái thời tiết lên thanh thông báo hệ điều hành.
+
+---
+
+## Chức năng chi tiết
 
 ### 1. Dự báo thời tiết thời gian thực & Đổi địa điểm linh hoạt
 - **Thời tiết hiện tại**: Nhiệt độ thực tế, nhiệt độ cảm nhận (Feels Like), độ ẩm, tốc độ và hướng gió, chỉ số UV, áp suất khí quyển, điểm sương và tầm nhìn.
