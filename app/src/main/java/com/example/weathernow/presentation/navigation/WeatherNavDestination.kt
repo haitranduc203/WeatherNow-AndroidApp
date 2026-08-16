@@ -5,6 +5,9 @@ import kotlinx.serialization.Serializable
 
 sealed interface WeatherNavDestination : NavKey {
     @Serializable
+    data object Splash : WeatherNavDestination
+
+    @Serializable
     data object Onboarding : WeatherNavDestination
     
     @Serializable

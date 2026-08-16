@@ -21,12 +21,13 @@ import com.example.weathernow.presentation.home.HomeScreen
 import com.example.weathernow.presentation.onboarding.OnboardingScreen
 import com.example.weathernow.presentation.search.SearchScreen
 import com.example.weathernow.presentation.settings.SettingsScreen
+import com.example.weathernow.presentation.splash.SplashScreen
 import com.example.weathernow.theme.WeatherNowTheme
 
 @Composable
 fun WeatherNavHost(
     modifier: Modifier = Modifier,
-    startDestination: WeatherNavDestination = WeatherNavDestination.Home
+    startDestination: WeatherNavDestination = WeatherNavDestination.Splash
 ) {
     val backStack = rememberNavBackStack(startDestination)
     val currentDestination = backStack.lastOrNull() ?: startDestination
@@ -69,6 +70,14 @@ fun WeatherNavHost(
                 backStack = backStack,
                 onBack = { backStack.removeLastOrNull() },
                 entryProvider = entryProvider {
+                    entry<WeatherNavDestination.Splash> {
+                        SplashScreen(
+                            onFinishSplash = {
+                                backStack.clear()
+                                backStack.add(WeatherNavDestination.Home)
+                            }
+                        )
+                    }
                     entry<WeatherNavDestination.Home> {
                         HomeScreen(
                             onNavigateToSearch = {

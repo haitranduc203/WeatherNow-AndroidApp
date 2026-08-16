@@ -32,14 +32,16 @@
 
 > Toàn bộ ảnh chụp thực tế 100% từ thiết bị **Realme (Android 13 / API 33)** thể hiện chi tiết từng tính năng và màn hình trong ứng dụng.
 
-### 1. Trải nghiệm Trang chủ & Khí tượng tổng quan
+### 1. Khởi động ứng dụng & Trải nghiệm Trang chủ
 
 <p align="center">
-  <img src="docs/screenshots/01_home_screen.png" alt="01. Màn hình Trang chủ" width="31%" />
-  <img src="docs/screenshots/02_home_location_switcher.png" alt="02. Bộ đổi tỉnh thành phố" width="31%" />
-  <img src="docs/screenshots/03_home_7day_forecast.png" alt="03. Dự báo 7 ngày Dynamic Range" width="31%" />
+  <img src="docs/screenshots/00_splash_screen.png" alt="00. Màn hình Khởi động SplashScreen" width="24%" />
+  <img src="docs/screenshots/01_home_screen.png" alt="01. Màn hình Trang chủ" width="24%" />
+  <img src="docs/screenshots/02_home_location_switcher.png" alt="02. Bộ đổi tỉnh thành phố" width="24%" />
+  <img src="docs/screenshots/03_home_7day_forecast.png" alt="03. Dự báo 7 ngày Dynamic Range" width="24%" />
 </p>
 
+- **00. Màn hình Khởi động (`SplashScreen`)**: Hiệu ứng chuyển động mượt mà với biểu tượng Mặt Trời & Đám mây phát sáng quang phổ, tự động xoay chuyển aura và cập nhật trạng thái đồng bộ dữ liệu khí tượng.
 - **01. Màn hình Trang chủ (`HomeScreen`)**: Hiển thị thời tiết tức thời cho vị trí đang chọn (Hà Nội), thẻ thời tiết kính mờ, chỉ số UV, tốc độ gió, độ ẩm và dự báo 24 giờ cuộn ngang.
 - **02. Bộ chuyển đổi tỉnh/thành phố (`LocationSwitcherBottomSheet`)**: Bottom sheet chuyển nhanh giữa vị trí mặc định và toàn bộ các thành phố yêu thích đã lưu (Hạ Long, TP. Hồ Chí Minh, New York, Paris, Tokyo).
 - **03. Dự báo xu hướng 7 ngày (`7-Day Dynamic Range Bars`)**: Biểu diễn phổ nhiệt độ min/max tuần bằng thanh dải màu quang phổ co giãn động kèm chấm tròn thể hiện mức nhiệt hiện tại.
