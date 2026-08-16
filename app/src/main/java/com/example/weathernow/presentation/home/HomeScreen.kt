@@ -112,7 +112,8 @@ class HomeViewModel(
     fun loadWeatherData(
         latitude: Double = 21.0285,
         longitude: Double = 105.8542,
-        locationName: String = "Hanoi, Vietnam"
+        locationName: String = "Hà Nội",
+        adminArea: String? = "Thủ đô Hà Nội"
     ) {
         viewModelScope.launch {
             _uiState.value = HomeUiState.Loading
@@ -129,7 +130,8 @@ class HomeViewModel(
                             val location = WeatherLocation(
                                 id = "current_loc",
                                 name = locationName,
-                                country = null,
+                                country = "Việt Nam",
+                                adminArea = adminArea,
                                 latitude = latitude,
                                 longitude = longitude
                             )
@@ -176,8 +178,9 @@ class HomeViewModel(
         val currentState = _uiState.value
         val lat = if (currentState is HomeUiState.Success) currentState.location.latitude else 21.0285
         val lon = if (currentState is HomeUiState.Success) currentState.location.longitude else 105.8542
-        val name = if (currentState is HomeUiState.Success) currentState.location.name else "Hanoi, Vietnam"
-        loadWeatherData(lat, lon, name)
+        val name = if (currentState is HomeUiState.Success) currentState.location.name else "Hà Nội"
+        val admin = if (currentState is HomeUiState.Success) currentState.location.adminArea else "Thủ đô Hà Nội"
+        loadWeatherData(lat, lon, name, admin)
     }
 }
 

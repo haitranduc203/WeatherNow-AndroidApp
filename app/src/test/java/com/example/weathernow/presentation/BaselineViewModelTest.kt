@@ -66,7 +66,7 @@ class BaselineViewModelTest {
         val state = viewModel.uiState.value
         assertTrue("Actual state was: $state", state is HomeUiState.Success)
         val success = state as HomeUiState.Success
-        assertEquals("Hanoi, Vietnam", success.location.name)
+        assertEquals("Hà Nội", success.location.name)
         assertEquals(28.4, success.currentWeather.temperatureCelsius, 0.01)
         assertTrue(success.hourlyForecast.isNotEmpty())
         assertTrue(success.dailyForecast.isNotEmpty())
