@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.weathernow.domain.model.AppLanguage
 import com.example.weathernow.domain.model.CurrentWeather
 import com.example.weathernow.domain.model.DailyForecast
 import com.example.weathernow.domain.model.HourlyForecast
@@ -63,12 +64,13 @@ import com.example.weathernow.presentation.components.WeatherConditionIcon
 import com.example.weathernow.presentation.components.WeatherEmptyView
 import com.example.weathernow.presentation.components.WeatherErrorView
 import com.example.weathernow.presentation.components.WeatherLoadingView
-import com.example.weathernow.theme.AtmosphericGradientDark
+import com.example.weathernow.presentation.util.LocalAppLanguage
+import com.example.weathernow.presentation.util.LocalWeatherStrings
+import com.example.weathernow.presentation.util.ProvideWeatherLanguage
 import com.example.weathernow.theme.TemperatureRangeGradient
 import com.example.weathernow.theme.WeatherNowTheme
 import com.example.weathernow.theme.WeatherPrimary
-import com.example.weathernow.theme.WeatherSecondary
-import com.example.weathernow.theme.WeatherTertiary
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -81,81 +83,108 @@ import java.util.Locale
 
 sealed interface HomeUiState {
     data object Loading : HomeUiState
+    data object Empty : HomeUiState
+    data class Error(val message: String) : HomeUiState
     data class Success(
         val location: WeatherLocation,
         val currentWeather: CurrentWeather,
-        val hourlyForecast: List<HourlyForecast>,
-        val dailyForecast: List<DailyForecast>,
-        val isRefreshing: Boolean = false,
+        val hourlyForecast: List<HourlyForecast> = emptyList(),
+        val dailyForecast: List<DailyForecast> = emptyList(),
         val isOffline: Boolean = false,
-        val lastUpdatedText: String = "Updated just now"
+        val lastUpdatedText: String = "Updated 5m ago",
+        val isRefreshing: Boolean = false
     ) : HomeUiState
-    data class Error(val message: String) : HomeUiState
-    data object Empty : HomeUiState
 }
 
 class HomeViewModel : ViewModel() {
-    private val now = Instant.now()
-    private val today = LocalDate.now()
-
-    private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Success(
-        location = WeatherLocation(
-            id = "1",
-            name = "Hanoi",
-            country = "Vietnam",
-            latitude = 21.0285,
-            longitude = 105.8542,
-            isFavorite = true
-        ),
-        currentWeather = CurrentWeather(
-            temperatureCelsius = 28.0,
-            feelsLikeCelsius = 31.0,
-            humidityPercent = 68,
-            windSpeedKmh = 12.0,
-            windDirectionDegrees = 45,
-            condition = WeatherCondition.PARTLY_CLOUDY,
-            uvIndex = 5.0,
-            precipitationMm = 1.5,
-            pressureHpa = 1012.0,
-            observedAt = now
-        ),
-        hourlyForecast = listOf(
-            HourlyForecast(time = now, temperatureCelsius = 28.0, condition = WeatherCondition.PARTLY_CLOUDY, precipitationProbabilityPercent = 10),
-            HourlyForecast(time = now.plusSeconds(3600), temperatureCelsius = 29.0, condition = WeatherCondition.PARTLY_CLOUDY, precipitationProbabilityPercent = 15),
-            HourlyForecast(time = now.plusSeconds(7200), temperatureCelsius = 31.0, condition = WeatherCondition.CLEAR, precipitationProbabilityPercent = 5),
-            HourlyForecast(time = now.plusSeconds(10800), temperatureCelsius = 30.0, condition = WeatherCondition.CLEAR, precipitationProbabilityPercent = 5),
-            HourlyForecast(time = now.plusSeconds(14400), temperatureCelsius = 28.0, condition = WeatherCondition.RAIN, precipitationProbabilityPercent = 40),
-            HourlyForecast(time = now.plusSeconds(18000), temperatureCelsius = 26.0, condition = WeatherCondition.RAIN, precipitationProbabilityPercent = 60),
-            HourlyForecast(time = now.plusSeconds(21600), temperatureCelsius = 25.0, condition = WeatherCondition.CLOUDY, precipitationProbabilityPercent = 20),
-            HourlyForecast(time = now.plusSeconds(25200), temperatureCelsius = 24.0, condition = WeatherCondition.CLEAR, precipitationProbabilityPercent = 0)
-        ),
-        dailyForecast = listOf(
-            DailyForecast(date = today, minTemperatureCelsius = 24.0, maxTemperatureCelsius = 33.0, precipitationProbabilityPercent = 15, sunrise = null, sunset = null, condition = WeatherCondition.PARTLY_CLOUDY),
-            DailyForecast(date = today.plusDays(1), minTemperatureCelsius = 23.0, maxTemperatureCelsius = 30.0, precipitationProbabilityPercent = 70, sunrise = null, sunset = null, condition = WeatherCondition.RAIN),
-            DailyForecast(date = today.plusDays(2), minTemperatureCelsius = 22.0, maxTemperatureCelsius = 28.0, precipitationProbabilityPercent = 85, sunrise = null, sunset = null, condition = WeatherCondition.THUNDERSTORM),
-            DailyForecast(date = today.plusDays(3), minTemperatureCelsius = 24.0, maxTemperatureCelsius = 32.0, precipitationProbabilityPercent = 20, sunrise = null, sunset = null, condition = WeatherCondition.PARTLY_CLOUDY),
-            DailyForecast(date = today.plusDays(4), minTemperatureCelsius = 25.0, maxTemperatureCelsius = 34.0, precipitationProbabilityPercent = 10, sunrise = null, sunset = null, condition = WeatherCondition.CLEAR),
-            DailyForecast(date = today.plusDays(5), minTemperatureCelsius = 26.0, maxTemperatureCelsius = 35.0, precipitationProbabilityPercent = 5, sunrise = null, sunset = null, condition = WeatherCondition.CLEAR),
-            DailyForecast(date = today.plusDays(6), minTemperatureCelsius = 24.0, maxTemperatureCelsius = 31.0, precipitationProbabilityPercent = 30, sunrise = null, sunset = null, condition = WeatherCondition.CLOUDY)
-        ),
-        lastUpdatedText = "Updated 5m ago"
-    ))
+    private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-    fun refreshWeather() {
+    init {
+        loadWeatherData()
+    }
+
+    fun loadWeatherData() {
         viewModelScope.launch {
-            val current = _uiState.value
-            if (current is HomeUiState.Success) {
-                _uiState.value = current.copy(isRefreshing = true)
-                kotlinx.coroutines.delay(800)
-                _uiState.value = current.copy(isRefreshing = false, lastUpdatedText = "Updated just now")
+            _uiState.value = HomeUiState.Loading
+            val dummyLocation = WeatherLocation(
+                id = "current_loc",
+                name = "Hanoi",
+                country = "Vietnam",
+                latitude = 21.0285,
+                longitude = 105.8542
+            )
+            val dummyCurrent = CurrentWeather(
+                temperatureCelsius = 28.0,
+                feelsLikeCelsius = 31.0,
+                humidityPercent = 68,
+                windSpeedKmh = 12.4,
+                windDirectionDegrees = 45,
+                uvIndex = 5.0,
+                precipitationMm = 1.0,
+                pressureHpa = 1012.0,
+                condition = WeatherCondition.PARTLY_CLOUDY,
+                observedAt = Instant.now()
+            )
+
+            val now = Instant.now()
+            val dummyHourly = (0..23).map { hourOffset ->
+                HourlyForecast(
+                    time = now.plusSeconds(hourOffset * 3600L),
+                    temperatureCelsius = 28.0 + (hourOffset % 5) - 2,
+                    condition = if (hourOffset in 12..16) WeatherCondition.CLEAR else WeatherCondition.PARTLY_CLOUDY,
+                    precipitationProbabilityPercent = (hourOffset * 5) % 80
+                )
             }
+
+            val today = LocalDate.now()
+            val dummyDaily = (0..6).map { dayOffset ->
+                DailyForecast(
+                    date = today.plusDays(dayOffset.toLong()),
+                    minTemperatureCelsius = 22.0 + (dayOffset % 3),
+                    maxTemperatureCelsius = 30.0 + (dayOffset % 6),
+                    precipitationProbabilityPercent = if (dayOffset == 1 || dayOffset == 2) 70 else 15,
+                    sunrise = null,
+                    sunset = null,
+                    condition = when (dayOffset % 4) {
+                        0 -> WeatherCondition.PARTLY_CLOUDY
+                        1 -> WeatherCondition.RAIN
+                        2 -> WeatherCondition.THUNDERSTORM
+                        else -> WeatherCondition.CLEAR
+                    }
+                )
+            }
+
+            _uiState.value = HomeUiState.Success(
+                location = dummyLocation,
+                currentWeather = dummyCurrent,
+                hourlyForecast = dummyHourly,
+                dailyForecast = dummyDaily,
+                isOffline = false,
+                lastUpdatedText = "Updated 5m ago"
+            )
+        }
+    }
+
+    fun refresh() {
+        val currentState = _uiState.value
+        if (currentState is HomeUiState.Success) {
+            viewModelScope.launch {
+                _uiState.value = currentState.copy(isRefreshing = true)
+                delay(800)
+                _uiState.value = currentState.copy(
+                    isRefreshing = false,
+                    lastUpdatedText = "Updated just now"
+                )
+            }
+        } else {
+            loadWeatherData()
         }
     }
 }
 
 /**
- * Stateful HomeScreen connecting ViewModel to Stitch-designed HomeContent.
+ * Stateful HomeScreen.
  */
 @Composable
 fun HomeScreen(
@@ -166,11 +195,11 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
-    val state by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
 
     HomeContent(
-        uiState = state,
-        onRefresh = viewModel::refreshWeather,
+        uiState = uiState,
+        onRefresh = viewModel::refresh,
         onNavigateToSearch = onNavigateToSearch,
         onNavigateToFavorites = onNavigateToFavorites,
         onNavigateToSettings = onNavigateToSettings,
@@ -180,7 +209,7 @@ fun HomeScreen(
 }
 
 /**
- * Stateless HomeContent strictly conforming to Stitch Screen `9689cd15b0fc461a8d0b86f406c6090a`.
+ * Stateless HomeContent conforming to Stitch Screen `9689cd15b0fc461a8d0b86f406c6090a`.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -193,39 +222,40 @@ fun HomeContent(
     onNavigateToForecast: (Double, Double, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalWeatherStrings.current
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.LocationOn,
-                            contentDescription = null,
-                            tint = WeatherPrimary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Column {
-                            val locationName = when (uiState) {
-                                is HomeUiState.Success -> "${uiState.location.name}${if (!uiState.location.country.isNullOrEmpty()) ", ${uiState.location.country}" else ""}"
-                                else -> "WeatherNow"
-                            }
-                            Text(
-                                text = locationName,
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onSurface
+                    if (uiState is HomeUiState.Success) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable(onClick = onNavigateToSearch)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
                             )
-                            if (uiState is HomeUiState.Success) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Column {
+                                Text(
+                                    text = "${uiState.location.name}, ${uiState.location.country ?: ""}",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
                                 Surface(
-                                    color = WeatherPrimary.copy(alpha = 0.15f),
+                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
                                     shape = CircleShape,
                                     modifier = Modifier.padding(top = 2.dp)
                                 ) {
                                     Text(
                                         text = uiState.lastUpdatedText,
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = WeatherPrimary,
+                                        color = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
                                     )
                                 }
@@ -347,6 +377,9 @@ private fun HeroWeatherCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalWeatherStrings.current
+    val currentLang = LocalAppLanguage.current
+
     GlassCard(
         modifier = modifier
             .fillMaxWidth()
@@ -371,14 +404,14 @@ private fun HeroWeatherCard(
                 lineHeight = 80.sp
             )
             Text(
-                text = currentWeather.condition.displayName,
+                text = currentWeather.condition.localizedName(currentLang),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "Feels like ${currentWeather.feelsLikeCelsius.toInt()}°C  •  Humidity ${currentWeather.humidityPercent ?: 0}%",
+                text = "${strings.feelsLike(currentWeather.feelsLikeCelsius.toInt())}  •  ${strings.humidity} ${currentWeather.humidityPercent ?: 0}%",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -394,6 +427,8 @@ private fun KeyWeatherMetricsGrid(
     currentWeather: CurrentWeather,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalWeatherStrings.current
+
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -403,17 +438,17 @@ private fun KeyWeatherMetricsGrid(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             MetricTile(
-                label = "Humidity",
+                label = strings.humidity,
                 value = "${currentWeather.humidityPercent ?: 0}%",
-                subtitle = "Normal",
+                subtitle = strings.normal,
                 icon = Icons.Default.WaterDrop,
                 iconTint = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier.weight(1f)
             )
             MetricTile(
-                label = "Wind Speed",
+                label = strings.windSpeed,
                 value = "${currentWeather.windSpeedKmh?.toInt() ?: 0} km/h",
-                subtitle = "Direction: ${currentWeather.windDirectionDegrees ?: 0}° NE",
+                subtitle = "NE ${currentWeather.windDirectionDegrees ?: 0}°",
                 icon = Icons.Default.Air,
                 iconTint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f)
@@ -424,17 +459,17 @@ private fun KeyWeatherMetricsGrid(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             MetricTile(
-                label = "UV Index",
+                label = strings.uvIndex,
                 value = "${currentWeather.uvIndex?.toInt() ?: 0}",
-                subtitle = "Moderate",
+                subtitle = strings.moderate,
                 icon = Icons.Default.WbSunny,
                 iconTint = MaterialTheme.colorScheme.tertiary,
                 modifier = Modifier.weight(1f)
             )
             MetricTile(
-                label = "Precipitation",
+                label = strings.precipitation,
                 value = "${currentWeather.precipitationMm?.toInt() ?: 0} mm",
-                subtitle = "Expected today",
+                subtitle = strings.expectedToday,
                 icon = Icons.Default.WbTwilight,
                 iconTint = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier.weight(1f)
@@ -481,9 +516,10 @@ private fun MetricTile(
                 style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface
             )
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -491,14 +527,15 @@ private fun MetricTile(
 }
 
 /**
- * 24-Hour Hourly Forecast horizontal scroll section.
+ * 24-Hour Forecast horizontal scroll strip.
  */
 @Composable
 private fun HourlyForecastSection(
     hourlyList: List<HourlyForecast>,
     modifier: Modifier = Modifier
 ) {
-    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault()).withZone(ZoneId.systemDefault())
+    val strings = LocalWeatherStrings.current
+    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())
 
     GlassCard(
         modifier = modifier.fillMaxWidth(),
@@ -507,13 +544,13 @@ private fun HourlyForecastSection(
     ) {
         Column {
             Text(
-                text = "24-Hour Forecast",
+                text = strings.forecast24h,
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.onSurface
             )
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(hourlyList) { hourly ->
                     val formattedTime = timeFormatter.format(hourly.time)
@@ -564,7 +601,10 @@ private fun DailyForecastSection(
     dailyList: List<DailyForecast>,
     modifier: Modifier = Modifier
 ) {
-    val dayFormatter = DateTimeFormatter.ofPattern("EEE", Locale.getDefault())
+    val currentLang = LocalAppLanguage.current
+    val locale = if (currentLang == AppLanguage.VIETNAMESE) Locale("vi", "VN") else Locale.ENGLISH
+    val dayFormatter = DateTimeFormatter.ofPattern("EEE", locale)
+    val strings = LocalWeatherStrings.current
 
     GlassCard(
         modifier = modifier.fillMaxWidth(),
@@ -573,12 +613,16 @@ private fun DailyForecastSection(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(
-                text = "7-Day Forecast",
+                text = strings.forecast7d,
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.onSurface
             )
             dailyList.forEach { daily ->
-                val dayLabel = if (daily.date == LocalDate.now()) "Today" else dayFormatter.format(daily.date)
+                val dayLabel = if (daily.date == LocalDate.now()) {
+                    if (currentLang == AppLanguage.VIETNAMESE) "Hôm nay" else "Today"
+                } else {
+                    dayFormatter.format(daily.date).replaceFirstChar { it.uppercase() }
+                }
                 val rainChance = daily.precipitationProbabilityPercent ?: 0
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -589,14 +633,14 @@ private fun DailyForecastSection(
                         text = dayLabel,
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                         color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.width(64.dp)
+                        modifier = Modifier.width(76.dp)
                     )
                     WeatherConditionIcon(condition = daily.condition, size = 24.dp)
                     if (rainChance > 10) {
                         Text(
                             text = "$rainChance%",
                             style = MaterialTheme.typography.labelSmall,
-                            color = WeatherSecondary,
+                            color = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.width(36.dp)
                         )
                     } else {
@@ -633,12 +677,14 @@ private fun DailyForecastSection(
 @Composable
 private fun HomeScreenDarkPreview() {
     WeatherNowTheme(darkTheme = true) {
-        HomeScreen(
-            onNavigateToSearch = {},
-            onNavigateToFavorites = {},
-            onNavigateToSettings = {},
-            onNavigateToForecast = { _, _, _ -> }
-        )
+        ProvideWeatherLanguage(language = AppLanguage.VIETNAMESE) {
+            HomeScreen(
+                onNavigateToSearch = {},
+                onNavigateToFavorites = {},
+                onNavigateToSettings = {},
+                onNavigateToForecast = { _, _, _ -> }
+            )
+        }
     }
 }
 
@@ -646,11 +692,13 @@ private fun HomeScreenDarkPreview() {
 @Composable
 private fun HomeScreenLightPreview() {
     WeatherNowTheme(darkTheme = false) {
-        HomeScreen(
-            onNavigateToSearch = {},
-            onNavigateToFavorites = {},
-            onNavigateToSettings = {},
-            onNavigateToForecast = { _, _, _ -> }
-        )
+        ProvideWeatherLanguage(language = AppLanguage.ENGLISH) {
+            HomeScreen(
+                onNavigateToSearch = {},
+                onNavigateToFavorites = {},
+                onNavigateToSettings = {},
+                onNavigateToForecast = { _, _, _ -> }
+            )
+        }
     }
 }

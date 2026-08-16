@@ -6,6 +6,11 @@ enum class AppTheme {
     DARK
 }
 
+enum class AppLanguage(val code: String, val displayName: String) {
+    ENGLISH("en", "English"),
+    VIETNAMESE("vi", "Tiếng Việt")
+}
+
 enum class TemperatureUnit {
     CELSIUS,
     FAHRENHEIT
@@ -19,6 +24,7 @@ enum class WindSpeedUnit {
 
 data class UserPreferences(
     val theme: AppTheme = AppTheme.SYSTEM,
+    val language: AppLanguage = AppLanguage.VIETNAMESE,
     val temperatureUnit: TemperatureUnit = TemperatureUnit.CELSIUS,
     val windSpeedUnit: WindSpeedUnit = WindSpeedUnit.KMH,
     val notificationsEnabled: Boolean = false,

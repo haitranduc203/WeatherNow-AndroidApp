@@ -48,21 +48,22 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.weathernow.domain.model.CurrentWeather
+import com.example.weathernow.domain.model.AppLanguage
 import com.example.weathernow.domain.model.DailyForecast
 import com.example.weathernow.domain.model.HourlyForecast
 import com.example.weathernow.domain.model.WeatherCondition
 import com.example.weathernow.presentation.components.GlassCard
 import com.example.weathernow.presentation.components.WeatherConditionIcon
 import com.example.weathernow.presentation.components.WeatherLoadingView
-import com.example.weathernow.theme.AtmosphericGradientDark
+import com.example.weathernow.presentation.util.LocalAppLanguage
+import com.example.weathernow.presentation.util.LocalWeatherStrings
+import com.example.weathernow.presentation.util.ProvideWeatherLanguage
 import com.example.weathernow.theme.TemperatureRangeGradient
 import com.example.weathernow.theme.WeatherNowTheme
 import com.example.weathernow.theme.WeatherPrimary
-import com.example.weathernow.theme.WeatherSecondary
-import com.example.weathernow.theme.WeatherTertiary
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -73,55 +74,67 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-data class ForecastUiState(
-    val locationName: String = "Hanoi",
-    val currentWeather: CurrentWeather = CurrentWeather(
-        temperatureCelsius = 28.0,
-        feelsLikeCelsius = 31.0,
-        humidityPercent = 72,
-        windSpeedKmh = 14.0,
-        windDirectionDegrees = 90,
-        condition = WeatherCondition.PARTLY_CLOUDY,
-        uvIndex = 6.0,
-        precipitationMm = 1.2,
-        pressureHpa = 1013.0,
-        observedAt = Instant.now()
-    ),
-    val hourlyList: List<HourlyForecast> = listOf(
-        HourlyForecast(time = Instant.now(), temperatureCelsius = 24.0, condition = WeatherCondition.CLEAR, precipitationProbabilityPercent = 0),
-        HourlyForecast(time = Instant.now().plusSeconds(10800), temperatureCelsius = 27.0, condition = WeatherCondition.PARTLY_CLOUDY, precipitationProbabilityPercent = 5),
-        HourlyForecast(time = Instant.now().plusSeconds(21600), temperatureCelsius = 32.0, condition = WeatherCondition.PARTLY_CLOUDY, precipitationProbabilityPercent = 10),
-        HourlyForecast(time = Instant.now().plusSeconds(32400), temperatureCelsius = 31.0, condition = WeatherCondition.RAIN, precipitationProbabilityPercent = 45),
-        HourlyForecast(time = Instant.now().plusSeconds(43200), temperatureCelsius = 27.0, condition = WeatherCondition.THUNDERSTORM, precipitationProbabilityPercent = 80),
-        HourlyForecast(time = Instant.now().plusSeconds(54000), temperatureCelsius = 25.0, condition = WeatherCondition.RAIN, precipitationProbabilityPercent = 60),
-        HourlyForecast(time = Instant.now().plusSeconds(64800), temperatureCelsius = 24.0, condition = WeatherCondition.CLOUDY, precipitationProbabilityPercent = 20)
-    ),
-    val dailyList: List<DailyForecast> = listOf(
-        DailyForecast(date = LocalDate.now(), minTemperatureCelsius = 24.0, maxTemperatureCelsius = 33.0, precipitationProbabilityPercent = 45, sunrise = null, sunset = null, condition = WeatherCondition.PARTLY_CLOUDY),
-        DailyForecast(date = LocalDate.now().plusDays(1), minTemperatureCelsius = 23.0, maxTemperatureCelsius = 30.0, precipitationProbabilityPercent = 75, sunrise = null, sunset = null, condition = WeatherCondition.RAIN),
-        DailyForecast(date = LocalDate.now().plusDays(2), minTemperatureCelsius = 22.0, maxTemperatureCelsius = 28.0, precipitationProbabilityPercent = 90, sunrise = null, sunset = null, condition = WeatherCondition.THUNDERSTORM),
-        DailyForecast(date = LocalDate.now().plusDays(3), minTemperatureCelsius = 24.0, maxTemperatureCelsius = 32.0, precipitationProbabilityPercent = 30, sunrise = null, sunset = null, condition = WeatherCondition.PARTLY_CLOUDY),
-        DailyForecast(date = LocalDate.now().plusDays(4), minTemperatureCelsius = 25.0, maxTemperatureCelsius = 34.0, precipitationProbabilityPercent = 10, sunrise = null, sunset = null, condition = WeatherCondition.CLEAR),
-        DailyForecast(date = LocalDate.now().plusDays(5), minTemperatureCelsius = 26.0, maxTemperatureCelsius = 35.0, precipitationProbabilityPercent = 5, sunrise = null, sunset = null, condition = WeatherCondition.CLEAR),
-        DailyForecast(date = LocalDate.now().plusDays(6), minTemperatureCelsius = 24.0, maxTemperatureCelsius = 31.0, precipitationProbabilityPercent = 20, sunrise = null, sunset = null, condition = WeatherCondition.CLOUDY)
-    ),
+data class ForecastDetailUiState(
+    val locationName: String = "Tokyo",
+    val latitude: Double = 35.6762,
+    val longitude: Double = 139.6503,
+    val hourlyList: List<HourlyForecast> = emptyList(),
+    val dailyList: List<DailyForecast> = emptyList(),
+    val feelsLikeCelsius: Double = 31.0,
+    val windGustsKmh: Double = 22.5,
+    val windDirectionDegrees: Int = 90,
+    val uvIndex: Double = 6.0,
+    val humidityPercent: Int = 72,
+    val dewPointCelsius: Double = 22.0,
+    val pressureHpa: Double = 1013.0,
+    val visibilityKm: Double = 10.0,
     val sunriseTime: String = "05:42 AM",
     val sunsetTime: String = "18:28 PM",
     val solarNoonTime: String = "12:05 PM",
-    val visibilityKm: Double = 10.0,
-    val dewPointCelsius: Double = 22.0,
     val isLoading: Boolean = false
 )
 
 class ForecastViewModel : ViewModel() {
-    private val _uiState = MutableStateFlow(ForecastUiState())
-    val uiState: StateFlow<ForecastUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(ForecastDetailUiState())
+    val uiState: StateFlow<ForecastDetailUiState> = _uiState.asStateFlow()
 
-    fun refresh() {
+    fun loadForecast(lat: Double, lon: Double, name: String) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
-            kotlinx.coroutines.delay(600)
-            _uiState.value = _uiState.value.copy(isLoading = false)
+            _uiState.value = _uiState.value.copy(isLoading = true, latitude = lat, longitude = lon, locationName = name)
+            val now = Instant.now()
+            val dummyHourly = (0..23).map { index ->
+                HourlyForecast(
+                    time = now.plusSeconds(index * 3600L),
+                    temperatureCelsius = 24.0 + (index % 6),
+                    condition = when (index % 5) {
+                        0 -> WeatherCondition.CLEAR
+                        1 -> WeatherCondition.PARTLY_CLOUDY
+                        2 -> WeatherCondition.CLOUDY
+                        3 -> WeatherCondition.RAIN
+                        else -> WeatherCondition.CLEAR
+                    },
+                    precipitationProbabilityPercent = (index * 7) % 95
+                )
+            }
+
+            val today = LocalDate.now()
+            val dummyDaily = (0..6).map { day ->
+                DailyForecast(
+                    date = today.plusDays(day.toLong()),
+                    minTemperatureCelsius = 22.0 + (day % 3),
+                    maxTemperatureCelsius = 28.0 + (day % 7),
+                    precipitationProbabilityPercent = if (day == 1 || day == 2) 80 else 10,
+                    sunrise = null,
+                    sunset = null,
+                    condition = if (day == 1 || day == 2) WeatherCondition.RAIN else WeatherCondition.CLEAR
+                )
+            }
+
+            _uiState.value = _uiState.value.copy(
+                hourlyList = dummyHourly,
+                dailyList = dummyDaily,
+                isLoading = false
+            )
         }
     }
 }
@@ -131,50 +144,62 @@ class ForecastViewModel : ViewModel() {
  */
 @Composable
 fun ForecastScreen(
+    latitude: Double,
+    longitude: Double,
     locationName: String,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ForecastViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
-    val state by viewModel.uiState.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(latitude, longitude, locationName) {
+        viewModel.loadForecast(latitude, longitude, locationName)
+    }
+
+    val uiState by viewModel.uiState.collectAsState()
 
     ForecastContent(
-        uiState = state.copy(locationName = locationName),
-        onRefresh = viewModel::refresh,
-        onShare = { /* Share weather summary */ },
+        uiState = uiState,
+        onRefresh = { viewModel.loadForecast(latitude, longitude, locationName) },
         onNavigateBack = onNavigateBack,
         modifier = modifier
     )
 }
 
 /**
- * Stateless ForecastContent strictly conforming to Stitch Screen `14276268cb4a4c5f89bfbc8f79e5199b`.
+ * Stateless ForecastContent conforming to Stitch Screen `14276268cb4a4c5f89bfbc8f79e5199b`.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ForecastContent(
-    uiState: ForecastUiState,
+    uiState: ForecastDetailUiState,
     onRefresh: () -> Unit,
-    onShare: () -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalWeatherStrings.current
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text("${uiState.locationName} — Forecast & Trends", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium) },
+                title = {
+                    Text(
+                        text = strings.forecastDetailTitle(uiState.locationName),
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
-                    IconButton(onClick = onShare) {
+                    IconButton(onClick = {}) {
                         Icon(Icons.Default.Share, contentDescription = "Share", tint = MaterialTheme.colorScheme.onSurface)
                     }
                     IconButton(onClick = onRefresh) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = WeatherPrimary)
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
@@ -194,7 +219,7 @@ fun ForecastContent(
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
-                    contentPadding = PaddingValues(top = 8.dp, bottom = 32.dp)
+                    contentPadding = PaddingValues(top = 8.dp, bottom = 120.dp)
                 ) {
                     // 1. 24-Hour Trend Visual Card (Stitch Component)
                     item {
@@ -233,6 +258,7 @@ private fun HourlyTrendChartCard(
     hourlyList: List<HourlyForecast>,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalWeatherStrings.current
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault()).withZone(ZoneId.systemDefault())
 
     GlassCard(
@@ -247,7 +273,7 @@ private fun HourlyTrendChartCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "24-Hour Temperature & Rain Trend",
+                    text = strings.forecast24h,
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -256,7 +282,7 @@ private fun HourlyTrendChartCard(
                     shape = CircleShape
                 ) {
                     Text(
-                        text = "Live Trend",
+                        text = strings.liveTrend,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
@@ -324,9 +350,11 @@ private fun HourlyTrendChartCard(
  */
 @Composable
 private fun DetailedMetricsGrid(
-    uiState: ForecastUiState,
+    uiState: ForecastDetailUiState,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalWeatherStrings.current
+
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -335,62 +363,64 @@ private fun DetailedMetricsGrid(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            DetailMetricTile(
-                title = "Feels Like",
-                value = "${uiState.currentWeather.feelsLikeCelsius.toInt()}°C",
-                description = "Humidity makes it feel warmer",
+            DetailedMetricTile(
+                title = strings.feelsLikeLabel,
+                value = "${uiState.feelsLikeCelsius.toInt()}°C",
+                subtitle = strings.thermalComfort,
                 icon = Icons.Default.WbSunny,
-                iconTint = WeatherTertiary,
+                iconTint = MaterialTheme.colorScheme.tertiary,
                 modifier = Modifier.weight(1f)
             )
-            DetailMetricTile(
-                title = "Wind & Gusts",
-                value = "${uiState.currentWeather.windSpeedKmh?.toInt() ?: 0} km/h",
-                description = "Direction: ${uiState.currentWeather.windDirectionDegrees ?: 0}° East",
+            DetailedMetricTile(
+                title = strings.windGusts,
+                value = "${uiState.windGustsKmh.toInt()} km/h",
+                subtitle = strings.windDirectionLabel(uiState.windDirectionDegrees),
                 icon = Icons.Default.Air,
-                iconTint = WeatherPrimary,
+                iconTint = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier.weight(1f)
             )
         }
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            DetailMetricTile(
-                title = "UV Index",
-                value = "${uiState.currentWeather.uvIndex?.toInt() ?: 0} High",
-                description = "Protection required until 16:00",
+            DetailedMetricTile(
+                title = strings.uvIndex,
+                value = "${uiState.uvIndex.toInt()} ${strings.high}",
+                subtitle = strings.moderateProtection,
                 icon = Icons.Default.WbTwilight,
-                iconTint = Color(0xFFFFB74D),
+                iconTint = MaterialTheme.colorScheme.tertiary,
                 modifier = Modifier.weight(1f)
             )
-            DetailMetricTile(
-                title = "Humidity & Dew",
-                value = "${uiState.currentWeather.humidityPercent ?: 0}%",
-                description = "The dew point is ${uiState.dewPointCelsius.toInt()}°C",
+            DetailedMetricTile(
+                title = strings.humidityDew,
+                value = "${uiState.humidityPercent}%",
+                subtitle = strings.dewPointLabel(uiState.dewPointCelsius.toInt()),
                 icon = Icons.Default.WaterDrop,
-                iconTint = WeatherSecondary,
+                iconTint = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier.weight(1f)
             )
         }
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            DetailMetricTile(
-                title = "Pressure",
-                value = "${uiState.currentWeather.pressureHpa?.toInt() ?: 1013} hPa",
-                description = "Standard atmospheric pressure",
+            DetailedMetricTile(
+                title = strings.pressure,
+                value = "${uiState.pressureHpa.toInt()} hPa",
+                subtitle = strings.standardPressure,
                 icon = Icons.Default.Compress,
-                iconTint = Color(0xFF81C784),
+                iconTint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f)
             )
-            DetailMetricTile(
-                title = "Visibility",
+            DetailedMetricTile(
+                title = strings.visibility,
                 value = "${uiState.visibilityKm.toInt()} km",
-                description = "Clear atmospheric view",
+                subtitle = strings.clearAtmosphere,
                 icon = Icons.Default.Visibility,
-                iconTint = Color(0xFF64B5F6),
+                iconTint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -398,18 +428,18 @@ private fun DetailedMetricsGrid(
 }
 
 @Composable
-private fun DetailMetricTile(
+private fun DetailedMetricTile(
     title: String,
     value: String,
-    description: String,
+    subtitle: String,
     icon: ImageVector,
     iconTint: Color,
     modifier: Modifier = Modifier
 ) {
     GlassCard(
         modifier = modifier,
-        shape = RoundedCornerShape(18.dp),
-        contentPadding = 14.dp
+        shape = RoundedCornerShape(20.dp),
+        contentPadding = 16.dp
     ) {
         Column {
             Row(
@@ -419,29 +449,38 @@ private fun DetailMetricTile(
             ) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f).padding(end = 4.dp),
+                    maxLines = 1
                 )
-                Icon(imageVector = icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(18.dp))
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(20.dp)
+                )
             }
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = value,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = description,
+                text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
             )
         }
     }
 }
 
 /**
- * Solar cycle arc card showing sunrise, solar noon, and sunset.
+ * Sun & Moon Horizon Cycle Arc Card.
  */
 @Composable
 private fun SolarCycleArcCard(
@@ -450,37 +489,47 @@ private fun SolarCycleArcCard(
     solarNoon: String,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalWeatherStrings.current
+
     GlassCard(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        contentPadding = 16.dp
+        shape = RoundedCornerShape(22.dp),
+        contentPadding = 18.dp
     ) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.WbSunny, contentDescription = null, tint = WeatherTertiary, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(6.dp))
+                Icon(
+                    imageVector = Icons.Default.WbSunny,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Sun & Moon Horizon Cycle",
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                    text = strings.sunMoonCycle,
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.SpaceAround,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(horizontalAlignment = Alignment.Start) {
-                    Text(text = "Sunrise", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = strings.sunrise, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(text = sunrise, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.onSurface)
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = "Solar Noon", style = MaterialTheme.typography.labelSmall, color = WeatherTertiary)
-                    Text(text = solarNoon, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = WeatherTertiary)
+                    Text(text = strings.solarNoon, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(text = solarNoon, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.tertiary)
                 }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(text = "Sunset", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = strings.sunset, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(text = sunset, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.onSurface)
                 }
             }
@@ -489,28 +538,35 @@ private fun SolarCycleArcCard(
 }
 
 /**
- * 7-Day extended daily forecast breakdown.
+ * 7-Day Extended Forecast Detail Card.
  */
 @Composable
 private fun Extended7DayForecastCard(
     dailyList: List<DailyForecast>,
     modifier: Modifier = Modifier
 ) {
-    val dayFormatter = DateTimeFormatter.ofPattern("EEEE", Locale.getDefault())
+    val currentLang = LocalAppLanguage.current
+    val locale = if (currentLang == AppLanguage.VIETNAMESE) Locale("vi", "VN") else Locale.ENGLISH
+    val dayFormatter = DateTimeFormatter.ofPattern("EEEE", locale)
+    val strings = LocalWeatherStrings.current
 
     GlassCard(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        contentPadding = 16.dp
+        shape = RoundedCornerShape(22.dp),
+        contentPadding = 18.dp
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(
-                text = "Extended 7-Day Forecast",
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                text = strings.forecast7d,
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface
             )
             dailyList.forEach { daily ->
-                val dayText = if (daily.date == LocalDate.now()) "Today" else dayFormatter.format(daily.date)
+                val dayLabel = if (daily.date == LocalDate.now()) {
+                    if (currentLang == AppLanguage.VIETNAMESE) "Hôm nay" else "Today"
+                } else {
+                    dayFormatter.format(daily.date).replaceFirstChar { it.uppercase() }
+                }
                 val rainChance = daily.precipitationProbabilityPercent ?: 0
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -518,31 +574,37 @@ private fun Extended7DayForecastCard(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = dayText,
+                        text = dayLabel,
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                         color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.width(90.dp)
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.width(80.dp)
-                    )
-                    WeatherConditionIcon(condition = daily.condition, size = 22.dp)
-                    Text(
-                        text = "$rainChance% rain",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = WeatherSecondary,
-                        modifier = Modifier.width(56.dp)
-                    )
+                    ) {
+                        WeatherConditionIcon(condition = daily.condition, size = 22.dp)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "$rainChance%",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                    // Temperature Range Bar
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .height(6.dp)
-                            .padding(horizontal = 6.dp)
+                            .padding(horizontal = 8.dp)
                             .clip(CircleShape)
                             .background(TemperatureRangeGradient)
                     )
                     Text(
                         text = "${daily.minTemperatureCelsius.toInt()}° / ${daily.maxTemperatureCelsius.toInt()}°",
-                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.width(60.dp)
+                        modifier = Modifier.width(64.dp)
                     )
                 }
             }
@@ -550,24 +612,30 @@ private fun Extended7DayForecastCard(
     }
 }
 
-@Preview(name = "ForecastScreen Dark Mode", showBackground = true, backgroundColor = 0xFF10141A)
+@Preview(name = "Forecast Screen Dark", showBackground = true, backgroundColor = 0xFF10141A)
 @Composable
 private fun ForecastScreenDarkPreview() {
     WeatherNowTheme(darkTheme = true) {
-        ForecastScreen(
-            locationName = "Hanoi",
-            onNavigateBack = {}
-        )
+        ProvideWeatherLanguage(language = AppLanguage.VIETNAMESE) {
+            ForecastContent(
+                uiState = ForecastDetailUiState(),
+                onRefresh = {},
+                onNavigateBack = {}
+            )
+        }
     }
 }
 
-@Preview(name = "ForecastScreen Light Mode", showBackground = true)
+@Preview(name = "Forecast Screen Light", showBackground = true)
 @Composable
 private fun ForecastScreenLightPreview() {
     WeatherNowTheme(darkTheme = false) {
-        ForecastScreen(
-            locationName = "Hanoi",
-            onNavigateBack = {}
-        )
+        ProvideWeatherLanguage(language = AppLanguage.ENGLISH) {
+            ForecastContent(
+                uiState = ForecastDetailUiState(),
+                onRefresh = {},
+                onNavigateBack = {}
+            )
+        }
     }
 }

@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AssistChip
@@ -52,74 +53,91 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.weathernow.domain.model.AppLanguage
 import com.example.weathernow.domain.model.WeatherLocation
 import com.example.weathernow.presentation.components.GlassCard
 import com.example.weathernow.presentation.components.WeatherEmptyView
 import com.example.weathernow.presentation.components.WeatherErrorView
 import com.example.weathernow.presentation.components.WeatherLoadingView
-import com.example.weathernow.theme.AtmosphericGradientDark
+import com.example.weathernow.presentation.util.LocalWeatherStrings
+import com.example.weathernow.presentation.util.ProvideWeatherLanguage
 import com.example.weathernow.theme.WeatherNowTheme
-import com.example.weathernow.theme.WeatherPrimary
-import com.example.weathernow.theme.WeatherSecondary
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-sealed interface SearchUiState {
-    data class Content(
-        val query: String = "",
-        val isSearching: Boolean = false,
-        val recentSearches: List<WeatherLocation> = emptyList(),
-        val searchResults: List<WeatherLocation> = emptyList(),
-        val errorMessage: String? = null
-    ) : SearchUiState
-}
+data class SearchUiModel(
+    val query: String = "",
+    val searchResults: List<WeatherLocation> = emptyList(),
+    val recentSearches: List<WeatherLocation> = emptyList(),
+    val isSearching: Boolean = false,
+    val errorMessage: String? = null
+)
 
 class SearchViewModel : ViewModel() {
-    private val _uiState = MutableStateFlow(SearchUiState.Content(
-        recentSearches = listOf(
-            WeatherLocation(id = "1", name = "Hanoi", country = "Vietnam", latitude = 21.0285, longitude = 105.8542, isFavorite = true),
-            WeatherLocation(id = "2", name = "Tokyo", country = "Japan", latitude = 35.6762, longitude = 139.6503, isFavorite = false),
-            WeatherLocation(id = "3", name = "Paris", country = "France", latitude = 48.8566, longitude = 2.3522, isFavorite = true)
-        ),
-        searchResults = listOf(
-            WeatherLocation(id = "1", name = "Hanoi", country = "Vietnam", latitude = 21.0285, longitude = 105.8542, isFavorite = true),
-            WeatherLocation(id = "4", name = "Haiphong", country = "Vietnam", latitude = 20.8449, longitude = 106.6881, isFavorite = false),
-            WeatherLocation(id = "5", name = "Ha Tinh", country = "Vietnam", latitude = 18.3429, longitude = 105.9059, isFavorite = false)
+    private val _uiState = MutableStateFlow(
+        SearchUiModel(
+            recentSearches = listOf(
+                WeatherLocation(id = "1", name = "Hanoi", country = "Vietnam", latitude = 21.0285, longitude = 105.8542),
+                WeatherLocation(id = "2", name = "Tokyo", country = "Japan", latitude = 35.6762, longitude = 139.6503),
+                WeatherLocation(id = "3", name = "Paris", country = "France", latitude = 48.8566, longitude = 2.3522)
+            )
         )
-    ))
-    val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
+    )
+    val uiState: StateFlow<SearchUiModel> = _uiState.asStateFlow()
+
+    private var searchJob: Job? = null
 
     fun onQueryChange(newQuery: String) {
-        val current = _uiState.value
-        _uiState.value = current.copy(query = newQuery)
+        _uiState.value = _uiState.value.copy(query = newQuery)
+        searchJob?.cancel()
+
+        if (newQuery.isBlank()) {
+            _uiState.value = _uiState.value.copy(
+                searchResults = emptyList(),
+                isSearching = false,
+                errorMessage = null
+            )
+            return
+        }
+
+        searchJob = viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSearching = true)
+            delay(350)
+            val mockResults = listOf(
+                WeatherLocation(id = "10", name = "$newQuery City", country = "Sample Country", latitude = 21.0, longitude = 105.8),
+                WeatherLocation(id = "11", name = "$newQuery North", country = "Sample Country", latitude = 21.5, longitude = 105.9),
+                WeatherLocation(id = "12", name = "$newQuery Central", country = "Sample Country", latitude = 20.8, longitude = 105.7)
+            )
+            _uiState.value = _uiState.value.copy(
+                searchResults = mockResults,
+                isSearching = false,
+                errorMessage = null
+            )
+        }
     }
 
     fun clearQuery() {
-        val current = _uiState.value
-        _uiState.value = current.copy(query = "")
-    }
-
-    fun clearAllRecent() {
-        val current = _uiState.value
-        _uiState.value = current.copy(recentSearches = emptyList())
-    }
-
-    fun removeRecent(location: WeatherLocation) {
-        val current = _uiState.value
-        val updated = current.recentSearches.filter { it.id != location.id }
-        _uiState.value = current.copy(recentSearches = updated)
+        onQueryChange("")
     }
 
     fun toggleFavorite(location: WeatherLocation) {
-        viewModelScope.launch {
-            val current = _uiState.value
-            val updatedResults = current.searchResults.map {
-                if (it.id == location.id) it.copy(isFavorite = !it.isFavorite) else it
-            }
-            _uiState.value = current.copy(searchResults = updatedResults)
+        val updated = _uiState.value.searchResults.map {
+            if (it.id == location.id) it.copy(isFavorite = !it.isFavorite) else it
         }
+        _uiState.value = _uiState.value.copy(searchResults = updated)
+    }
+
+    fun removeRecentSearch(location: WeatherLocation) {
+        val updated = _uiState.value.recentSearches.filterNot { it.id == location.id }
+        _uiState.value = _uiState.value.copy(recentSearches = updated)
+    }
+
+    fun clearAllRecentSearches() {
+        _uiState.value = _uiState.value.copy(recentSearches = emptyList())
     }
 }
 
@@ -128,21 +146,21 @@ class SearchViewModel : ViewModel() {
  */
 @Composable
 fun SearchScreen(
-    onNavigateBack: () -> Unit,
     onLocationSelected: (WeatherLocation) -> Unit,
+    onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SearchViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
 
     SearchContent(
-        uiState = state,
+        content = state,
         onQueryChange = viewModel::onQueryChange,
         onClearQuery = viewModel::clearQuery,
-        onClearAllRecent = viewModel::clearAllRecent,
-        onRemoveRecent = viewModel::removeRecent,
-        onToggleFavorite = viewModel::toggleFavorite,
         onLocationSelected = onLocationSelected,
+        onToggleFavorite = viewModel::toggleFavorite,
+        onRemoveRecent = viewModel::removeRecentSearch,
+        onClearAllRecent = viewModel::clearAllRecentSearches,
         onNavigateBack = onNavigateBack,
         modifier = modifier
     )
@@ -154,25 +172,23 @@ fun SearchScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchContent(
-    uiState: SearchUiState,
+    content: SearchUiModel,
     onQueryChange: (String) -> Unit,
     onClearQuery: () -> Unit,
-    onClearAllRecent: () -> Unit,
-    onRemoveRecent: (WeatherLocation) -> Unit,
-    onToggleFavorite: (WeatherLocation) -> Unit,
     onLocationSelected: (WeatherLocation) -> Unit,
+    onToggleFavorite: (WeatherLocation) -> Unit,
+    onRemoveRecent: (WeatherLocation) -> Unit,
+    onClearAllRecent: () -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val content = when (uiState) {
-        is SearchUiState.Content -> uiState
-    }
+    val strings = LocalWeatherStrings.current
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text("Search Location", fontWeight = FontWeight.Bold) },
+                title = { Text(strings.navSearch, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -198,7 +214,7 @@ fun SearchContent(
                     .padding(vertical = 8.dp),
                 placeholder = {
                     Text(
-                        "Search city or country (e.g. Hanoi, Tokyo)...",
+                        strings.searchPlaceholder,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -238,8 +254,8 @@ fun SearchContent(
             ) {
                 item {
                     AssistChip(
-                        onClick = { onQueryChange("Current Location") },
-                        label = { Text("Use My Location", color = MaterialTheme.colorScheme.primary) },
+                        onClick = { onQueryChange("Hanoi") },
+                        label = { Text(strings.useMyLocation, color = MaterialTheme.colorScheme.primary) },
                         leadingIcon = {
                             Icon(
                                 Icons.Default.MyLocation,
@@ -296,18 +312,18 @@ fun SearchContent(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Recent Searches",
+                            text = strings.recentSearches,
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         TextButton(onClick = onClearAllRecent) {
-                            Text("Clear all", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
+                            Text(strings.clearAll, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
                         }
                     }
 
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(vertical = 4.dp)
+                        contentPadding = PaddingValues(top = 4.dp, bottom = 120.dp)
                     ) {
                         items(content.recentSearches) { recent ->
                             GlassCard(
@@ -349,8 +365,8 @@ fun SearchContent(
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.Close,
-                                            contentDescription = "Remove",
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            contentDescription = "Delete",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                                             modifier = Modifier.size(16.dp)
                                         )
                                     }
@@ -360,122 +376,128 @@ fun SearchContent(
                     }
                 } else {
                     WeatherEmptyView(
-                        title = "Explore World Weather",
-                        subtitle = "Search for a city or country to view live forecasts and atmospheric data.",
-                        icon = Icons.Default.Search
+                        title = strings.noRecentSearches,
+                        subtitle = strings.searchPlaceholder,
+                        icon = Icons.Default.Search,
+                        modifier = Modifier.fillMaxSize()
                     )
                 }
             } else {
                 // Search Results List (Stitch Component)
-                Text(
-                    text = "Search Results",
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-
-                if (content.searchResults.isEmpty()) {
-                    WeatherEmptyView(
-                        title = "No Locations Found",
-                        subtitle = "Try searching with a different city or country name.",
-                        icon = Icons.Default.Search
-                    )
-                } else {
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        contentPadding = PaddingValues(bottom = 24.dp)
-                    ) {
-                        items(content.searchResults) { location ->
-                            SearchResultCard(
-                                location = location,
-                                onCardClick = { onLocationSelected(location) },
-                                onToggleFavorite = { onToggleFavorite(location) }
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SearchResultCard(
-    location: WeatherLocation,
-    onCardClick: () -> Unit,
-    onToggleFavorite: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    GlassCard(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onCardClick),
-        shape = RoundedCornerShape(18.dp),
-        contentPadding = 16.dp
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = location.name,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    location.country?.let { country ->
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Surface(
-                            color = WeatherPrimary.copy(alpha = 0.15f),
-                            shape = RoundedCornerShape(6.dp)
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(top = 4.dp, bottom = 120.dp)
+                ) {
+                    items(content.searchResults) { result ->
+                        GlassCard(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onLocationSelected(result) },
+                            shape = RoundedCornerShape(16.dp),
+                            contentPadding = 14.dp
                         ) {
-                            Text(
-                                text = country,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = WeatherPrimary,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.LocationOn,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column {
+                                        Text(
+                                            text = result.name,
+                                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = result.country ?: "",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Surface(
+                                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                            shape = RoundedCornerShape(4.dp)
+                                        ) {
+                                            Text(
+                                                text = "${String.format("%.2f", result.latitude)}°, ${String.format("%.2f", result.longitude)}°",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                            )
+                                        }
+                                    }
+                                }
+
+                                IconButton(onClick = { onToggleFavorite(result) }) {
+                                    Icon(
+                                        imageVector = if (result.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                        contentDescription = "Favorite",
+                                        tint = if (result.isFavorite) Color(0xFFFF5252) else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Lat: ${"%.2f".format(location.latitude)}, Lon: ${"%.2f".format(location.longitude)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            IconButton(onClick = onToggleFavorite) {
-                Icon(
-                    imageVector = if (location.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                    contentDescription = "Favorite",
-                    tint = if (location.isFavorite) Color(0xFFEF5350) else MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
     }
 }
 
-@Preview(name = "SearchScreen Dark Mode", showBackground = true, backgroundColor = 0xFF10141A)
+@Preview(name = "Search Screen Dark", showBackground = true, backgroundColor = 0xFF10141A)
 @Composable
 private fun SearchScreenDarkPreview() {
     WeatherNowTheme(darkTheme = true) {
-        SearchScreen(
-            onNavigateBack = {},
-            onLocationSelected = {}
-        )
+        ProvideWeatherLanguage(language = AppLanguage.VIETNAMESE) {
+            SearchContent(
+                content = SearchUiModel(
+                    recentSearches = listOf(
+                        WeatherLocation(id = "1", name = "Hà Nội", country = "Việt Nam", latitude = 21.0, longitude = 105.8),
+                        WeatherLocation(id = "2", name = "Tokyo", country = "Nhật Bản", latitude = 35.6, longitude = 139.6)
+                    )
+                ),
+                onQueryChange = {},
+                onClearQuery = {},
+                onLocationSelected = {},
+                onToggleFavorite = {},
+                onRemoveRecent = {},
+                onClearAllRecent = {},
+                onNavigateBack = {}
+            )
+        }
     }
 }
 
-@Preview(name = "SearchScreen Light Mode", showBackground = true)
+@Preview(name = "Search Screen Light", showBackground = true)
 @Composable
 private fun SearchScreenLightPreview() {
     WeatherNowTheme(darkTheme = false) {
-        SearchScreen(
-            onNavigateBack = {},
-            onLocationSelected = {}
-        )
+        ProvideWeatherLanguage(language = AppLanguage.ENGLISH) {
+            SearchContent(
+                content = SearchUiModel(
+                    query = "London",
+                    searchResults = listOf(
+                        WeatherLocation(id = "1", name = "London", country = "United Kingdom", latitude = 51.5, longitude = -0.1)
+                    )
+                ),
+                onQueryChange = {},
+                onClearQuery = {},
+                onLocationSelected = {},
+                onToggleFavorite = {},
+                onRemoveRecent = {},
+                onClearAllRecent = {},
+                onNavigateBack = {}
+            )
+        }
     }
 }

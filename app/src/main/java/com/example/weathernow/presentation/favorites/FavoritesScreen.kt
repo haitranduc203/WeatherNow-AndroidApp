@@ -2,6 +2,10 @@ package com.example.weathernow.presentation.favorites
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,7 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,92 +50,138 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.weathernow.domain.model.AppLanguage
 import com.example.weathernow.domain.model.WeatherCondition
 import com.example.weathernow.domain.model.WeatherLocation
 import com.example.weathernow.presentation.components.GlassCard
 import com.example.weathernow.presentation.components.WeatherConditionIcon
 import com.example.weathernow.presentation.components.WeatherEmptyView
 import com.example.weathernow.presentation.components.WeatherLoadingView
-import com.example.weathernow.theme.AtmosphericGradientDark
+import com.example.weathernow.presentation.util.LocalAppLanguage
+import com.example.weathernow.presentation.util.LocalWeatherStrings
+import com.example.weathernow.presentation.util.ProvideWeatherLanguage
 import com.example.weathernow.theme.WeatherNowTheme
-import com.example.weathernow.theme.WeatherPrimary
-import com.example.weathernow.theme.WeatherSecondary
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 
-data class FavoriteCityWeather(
+data class FavoriteItemUiModel(
     val location: WeatherLocation,
     val temperature: Double,
     val condition: WeatherCondition,
+    val localTime: String,
     val minTemp: Double,
-    val maxTemp: Double,
-    val localTime: String
+    val maxTemp: Double
 )
 
 sealed interface FavoritesUiState {
     data object Loading : FavoritesUiState
     data class Success(
-        val currentLocation: FavoriteCityWeather? = null,
-        val favoritesList: List<FavoriteCityWeather> = emptyList()
+        val currentLocation: FavoriteItemUiModel? = null,
+        val favoritesList: List<FavoriteItemUiModel> = emptyList()
     ) : FavoritesUiState
+    data class Error(val message: String) : FavoritesUiState
 }
 
 class FavoritesViewModel : ViewModel() {
-    private val _uiState = MutableStateFlow<FavoritesUiState>(FavoritesUiState.Success(
-        currentLocation = FavoriteCityWeather(
-            location = WeatherLocation(id = "1", name = "Hanoi", country = "Vietnam", latitude = 21.0285, longitude = 105.8542, isFavorite = true),
-            temperature = 28.0,
-            condition = WeatherCondition.PARTLY_CLOUDY,
-            minTemp = 24.0,
-            maxTemp = 33.0,
-            localTime = "14:30"
-        ),
-        favoritesList = listOf(
-            FavoriteCityWeather(
-                location = WeatherLocation(id = "2", name = "Tokyo", country = "Japan", latitude = 35.6762, longitude = 139.6503, isFavorite = true),
-                temperature = 19.0,
-                condition = WeatherCondition.CLEAR,
-                minTemp = 15.0,
-                maxTemp = 22.0,
-                localTime = "16:30"
-            ),
-            FavoriteCityWeather(
-                location = WeatherLocation(id = "3", name = "Paris", country = "France", latitude = 48.8566, longitude = 2.3522, isFavorite = true),
-                temperature = 22.0,
-                condition = WeatherCondition.RAIN,
-                minTemp = 17.0,
-                maxTemp = 24.0,
-                localTime = "08:30"
-            ),
-            FavoriteCityWeather(
-                location = WeatherLocation(id = "4", name = "New York", country = "USA", latitude = 40.7128, longitude = -74.0060, isFavorite = true),
-                temperature = 16.0,
-                condition = WeatherCondition.PARTLY_CLOUDY,
-                minTemp = 12.0,
-                maxTemp = 20.0,
-                localTime = "02:30"
-            ),
-            FavoriteCityWeather(
-                location = WeatherLocation(id = "5", name = "Sydney", country = "Australia", latitude = -33.8688, longitude = 151.2093, isFavorite = true),
-                temperature = 25.0,
-                condition = WeatherCondition.CLEAR,
-                minTemp = 19.0,
-                maxTemp = 28.0,
-                localTime = "18:30"
-            )
-        )
-    ))
+    private val _uiState = MutableStateFlow<FavoritesUiState>(FavoritesUiState.Loading)
     val uiState: StateFlow<FavoritesUiState> = _uiState.asStateFlow()
 
-    fun removeFavorite(item: FavoriteCityWeather) {
+    init {
+        loadFavorites()
+    }
+
+    fun loadFavorites() {
         viewModelScope.launch {
-            val current = _uiState.value
-            if (current is FavoritesUiState.Success) {
-                val updated = current.favoritesList.filter { it.location.id != item.location.id }
-                _uiState.value = current.copy(favoritesList = updated)
-            }
+            _uiState.value = FavoritesUiState.Loading
+            val dummyCurrent = FavoriteItemUiModel(
+                location = WeatherLocation(
+                    id = "current",
+                    name = "Hanoi",
+                    country = "Vietnam",
+                    latitude = 21.0285,
+                    longitude = 105.8542
+                ),
+                temperature = 28.0,
+                condition = WeatherCondition.PARTLY_CLOUDY,
+                localTime = "09:00",
+                minTemp = 24.0,
+                maxTemp = 33.0
+            )
+
+            val dummyList = listOf(
+                FavoriteItemUiModel(
+                    location = WeatherLocation(
+                        id = "tokyo",
+                        name = "Tokyo",
+                        country = "Japan",
+                        latitude = 35.6762,
+                        longitude = 139.6503,
+                        isFavorite = true
+                    ),
+                    temperature = 19.0,
+                    condition = WeatherCondition.CLEAR,
+                    localTime = "16:30",
+                    minTemp = 15.0,
+                    maxTemp = 22.0
+                ),
+                FavoriteItemUiModel(
+                    location = WeatherLocation(
+                        id = "paris",
+                        name = "Paris",
+                        country = "France",
+                        latitude = 48.8566,
+                        longitude = 2.3522,
+                        isFavorite = true
+                    ),
+                    temperature = 22.0,
+                    condition = WeatherCondition.RAIN,
+                    localTime = "08:30",
+                    minTemp = 17.0,
+                    maxTemp = 24.0
+                ),
+                FavoriteItemUiModel(
+                    location = WeatherLocation(
+                        id = "ny",
+                        name = "New York",
+                        country = "USA",
+                        latitude = 40.7128,
+                        longitude = -74.0060,
+                        isFavorite = true
+                    ),
+                    temperature = 16.0,
+                    condition = WeatherCondition.PARTLY_CLOUDY,
+                    localTime = "02:30",
+                    minTemp = 12.0,
+                    maxTemp = 20.0
+                ),
+                FavoriteItemUiModel(
+                    location = WeatherLocation(
+                        id = "syd",
+                        name = "Sydney",
+                        country = "Australia",
+                        latitude = -33.8688,
+                        longitude = 151.2093,
+                        isFavorite = true
+                    ),
+                    temperature = 24.0,
+                    condition = WeatherCondition.CLEAR,
+                    localTime = "18:30",
+                    minTemp = 19.0,
+                    maxTemp = 28.0
+                )
+            )
+
+            _uiState.value = FavoritesUiState.Success(
+                currentLocation = dummyCurrent,
+                favoritesList = dummyList
+            )
+        }
+    }
+
+    fun removeFavorite(locationId: String) {
+        val currentState = _uiState.value
+        if (currentState is FavoritesUiState.Success) {
+            _uiState.value = currentState.copy(
+                favoritesList = currentState.favoritesList.filterNot { it.location.id == locationId }
+            )
         }
     }
 }
@@ -141,9 +191,9 @@ class FavoritesViewModel : ViewModel() {
  */
 @Composable
 fun FavoritesScreen(
-    onNavigateBack: () -> Unit,
     onLocationSelected: (WeatherLocation) -> Unit,
-    onNavigateToAdd: () -> Unit = onNavigateBack,
+    onNavigateToAdd: () -> Unit,
+    onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: FavoritesViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
@@ -151,8 +201,8 @@ fun FavoritesScreen(
 
     FavoritesContent(
         uiState = state,
-        onRemoveFavorite = viewModel::removeFavorite,
         onLocationSelected = onLocationSelected,
+        onRemoveFavorite = viewModel::removeFavorite,
         onNavigateToAdd = onNavigateToAdd,
         onNavigateBack = onNavigateBack,
         modifier = modifier
@@ -166,35 +216,46 @@ fun FavoritesScreen(
 @Composable
 fun FavoritesContent(
     uiState: FavoritesUiState,
-    onRemoveFavorite: (FavoriteCityWeather) -> Unit,
     onLocationSelected: (WeatherLocation) -> Unit,
+    onRemoveFavorite: (String) -> Unit,
     onNavigateToAdd: () -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalWeatherStrings.current
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text("Favorite Locations", fontWeight = FontWeight.Bold) },
+                title = { Text(strings.favoriteLocations, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onNavigateToAdd) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = strings.addLocation,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
+            androidx.compose.material3.FloatingActionButton(
                 onClick = onNavigateToAdd,
-                icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text("Add Location") },
-                containerColor = WeatherPrimary,
+                containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 shape = CircleShape,
-                modifier = Modifier.padding(bottom = 64.dp)
-            )
+                modifier = Modifier.padding(bottom = 76.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = strings.addLocation)
+            }
         }
     ) { innerPadding ->
         Box(
@@ -211,10 +272,10 @@ fun FavoritesContent(
                 is FavoritesUiState.Success -> {
                     if (uiState.favoritesList.isEmpty() && uiState.currentLocation == null) {
                         WeatherEmptyView(
-                            title = "No Favorite Cities Added",
-                            subtitle = "Keep track of weather in your favorite destinations by tapping Add Location.",
+                            title = strings.noFavoritesTitle,
+                            subtitle = strings.noFavoritesSubtitle,
                             icon = Icons.Default.Favorite,
-                            actionText = "Add Location",
+                            actionText = strings.addLocation,
                             onAction = onNavigateToAdd,
                             modifier = Modifier.align(Alignment.Center)
                         )
@@ -222,7 +283,7 @@ fun FavoritesContent(
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             verticalArrangement = Arrangement.spacedBy(14.dp),
-                            contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp)
+                            contentPadding = PaddingValues(top = 8.dp, bottom = 150.dp)
                         ) {
                             // 1. Current Pinned Location Card (Stitch Component)
                             uiState.currentLocation?.let { current ->
@@ -232,8 +293,8 @@ fun FavoritesContent(
                                             .fillMaxWidth()
                                             .clickable { onLocationSelected(current.location) },
                                         shape = RoundedCornerShape(20.dp),
-                                        backgroundColor = WeatherPrimary.copy(alpha = 0.15f),
-                                        borderColor = WeatherPrimary.copy(alpha = 0.35f),
+                                        backgroundColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
+                                        borderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
                                         contentPadding = 16.dp
                                     ) {
                                         Row(
@@ -245,18 +306,19 @@ fun FavoritesContent(
                                                 Icon(
                                                     imageVector = Icons.Default.LocationOn,
                                                     contentDescription = null,
-                                                    tint = WeatherPrimary,
+                                                    tint = MaterialTheme.colorScheme.primary,
                                                     modifier = Modifier.size(24.dp)
                                                 )
-                                                Spacer(modifier = Modifier.width(10.dp))
+                                                Spacer(modifier = Modifier.width(12.dp))
                                                 Column {
                                                     Text(
-                                                        text = "Current Location",
-                                                        style = MaterialTheme.typography.labelMedium,
-                                                        color = WeatherPrimary
+                                                        text = strings.pinnedCurrentLocation,
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.primary,
+                                                        fontWeight = FontWeight.SemiBold
                                                     )
                                                     Text(
-                                                        text = "${current.location.name}${if (!current.location.country.isNullOrEmpty()) ", ${current.location.country}" else ""}",
+                                                        text = "${current.location.name}, ${current.location.country ?: ""}",
                                                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                                         color = MaterialTheme.colorScheme.onSurface
                                                     )
@@ -277,35 +339,51 @@ fun FavoritesContent(
                                 }
                             }
 
-                            // 2. Saved Favorites List (Stitch Component)
-                            items(uiState.favoritesList) { item ->
-                                FavoriteLocationCard(
+                            // 2. Favorite Location Glass Cards (Stitch Component)
+                            items(
+                                items = uiState.favoritesList,
+                                key = { it.location.id ?: it.location.name }
+                            ) { item ->
+                                FavoriteCityCard(
                                     item = item,
                                     onClick = { onLocationSelected(item.location) },
-                                    onDelete = { onRemoveFavorite(item) }
+                                    onDelete = { onRemoveFavorite(item.location.id ?: "") }
                                 )
                             }
                         }
                     }
+                }
+                is FavoritesUiState.Error -> {
+                    WeatherEmptyView(
+                        title = "Error loading favorites",
+                        subtitle = uiState.message,
+                        actionText = "Try Again",
+                        onAction = { /* reload */ },
+                        modifier = Modifier.align(Alignment.Center)
+                    )
                 }
             }
         }
     }
 }
 
+/**
+ * Stitch Favorite City Glass Card with local time, temperature, condition and delete action.
+ */
 @Composable
-private fun FavoriteLocationCard(
-    item: FavoriteCityWeather,
+private fun FavoriteCityCard(
+    item: FavoriteItemUiModel,
     onClick: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val currentLang = LocalAppLanguage.current
     GlassCard(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(22.dp),
-        contentPadding = 18.dp
+        shape = RoundedCornerShape(20.dp),
+        contentPadding = 16.dp
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -321,7 +399,7 @@ private fun FavoriteLocationCard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Surface(
-                        color = Color.White.copy(alpha = 0.08f),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                         shape = RoundedCornerShape(6.dp)
                     ) {
                         Text(
@@ -340,7 +418,7 @@ private fun FavoriteLocationCard(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "${item.condition.displayName} • H: ${item.maxTemp.toInt()}° L: ${item.minTemp.toInt()}°",
+                    text = "${item.condition.localizedName(currentLang)} • H: ${item.maxTemp.toInt()}° L: ${item.minTemp.toInt()}°",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -360,15 +438,12 @@ private fun FavoriteLocationCard(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
-                IconButton(
-                    onClick = onDelete,
-                    modifier = Modifier.size(32.dp).padding(top = 4.dp)
-                ) {
+                IconButton(onClick = onDelete) {
                     Icon(
-                        imageVector = Icons.Default.DeleteOutline,
-                        contentDescription = "Delete",
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Remove",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -376,26 +451,80 @@ private fun FavoriteLocationCard(
     }
 }
 
-@Preview(name = "FavoritesScreen Dark Mode", showBackground = true, backgroundColor = 0xFF10141A)
+@Preview(name = "Favorites Screen Dark", showBackground = true, backgroundColor = 0xFF10141A)
 @Composable
 private fun FavoritesScreenDarkPreview() {
     WeatherNowTheme(darkTheme = true) {
-        FavoritesScreen(
-            onNavigateBack = {},
-            onLocationSelected = {},
-            onNavigateToAdd = {}
-        )
+        ProvideWeatherLanguage(language = AppLanguage.VIETNAMESE) {
+            FavoritesContent(
+                uiState = FavoritesUiState.Success(
+                    currentLocation = FavoriteItemUiModel(
+                        location = WeatherLocation(
+                            id = "1",
+                            name = "Hà Nội",
+                            country = "Việt Nam",
+                            latitude = 21.0,
+                            longitude = 105.8
+                        ),
+                        temperature = 28.0,
+                        condition = WeatherCondition.PARTLY_CLOUDY,
+                        localTime = "09:00",
+                        minTemp = 24.0,
+                        maxTemp = 33.0
+                    ),
+                    favoritesList = listOf(
+                        FavoriteItemUiModel(
+                            location = WeatherLocation(
+                                id = "2",
+                                name = "Tokyo",
+                                country = "Nhật Bản",
+                                latitude = 35.6,
+                                longitude = 139.6
+                            ),
+                            temperature = 19.0,
+                            condition = WeatherCondition.CLEAR,
+                            localTime = "16:30",
+                            minTemp = 15.0,
+                            maxTemp = 22.0
+                        )
+                    )
+                ),
+                onLocationSelected = {},
+                onRemoveFavorite = {},
+                onNavigateToAdd = {},
+                onNavigateBack = {}
+            )
+        }
     }
 }
 
-@Preview(name = "FavoritesScreen Light Mode", showBackground = true)
+@Preview(name = "Favorites Screen Light", showBackground = true)
 @Composable
 private fun FavoritesScreenLightPreview() {
     WeatherNowTheme(darkTheme = false) {
-        FavoritesScreen(
-            onNavigateBack = {},
-            onLocationSelected = {},
-            onNavigateToAdd = {}
-        )
+        ProvideWeatherLanguage(language = AppLanguage.ENGLISH) {
+            FavoritesContent(
+                uiState = FavoritesUiState.Success(
+                    currentLocation = FavoriteItemUiModel(
+                        location = WeatherLocation(
+                            id = "1",
+                            name = "Hanoi",
+                            country = "Vietnam",
+                            latitude = 21.0,
+                            longitude = 105.8
+                        ),
+                        temperature = 28.0,
+                        condition = WeatherCondition.PARTLY_CLOUDY,
+                        localTime = "09:00",
+                        minTemp = 24.0,
+                        maxTemp = 33.0
+                    )
+                ),
+                onLocationSelected = {},
+                onRemoveFavorite = {},
+                onNavigateToAdd = {},
+                onNavigateBack = {}
+            )
+        }
     }
 }

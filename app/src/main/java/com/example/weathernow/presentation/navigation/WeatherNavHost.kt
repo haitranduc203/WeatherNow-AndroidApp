@@ -144,6 +144,8 @@ fun WeatherNavHost(
                     }
                     entry<WeatherNavDestination.ForecastDetail> { navEntry ->
                         ForecastScreen(
+                            latitude = navEntry.latitude,
+                            longitude = navEntry.longitude,
                             locationName = navEntry.locationName,
                             onNavigateBack = { backStack.removeLastOrNull() }
                         )

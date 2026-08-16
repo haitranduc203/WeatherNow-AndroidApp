@@ -26,8 +26,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.weathernow.presentation.navigation.WeatherNavDestination
-import com.example.weathernow.theme.GlassCardBackgroundDark
-import com.example.weathernow.theme.GlassCardBackgroundLight
+import com.example.weathernow.presentation.util.LocalWeatherStrings
 import com.example.weathernow.theme.GlassCardBorderDark
 import com.example.weathernow.theme.GlassCardBorderLight
 import com.example.weathernow.theme.WeatherNowTheme
@@ -36,14 +35,24 @@ import com.example.weathernow.theme.WeatherPrimaryContainer
 import com.example.weathernow.theme.WeatherPrimaryLight
 
 enum class NavigationTab(
-    val title: String,
     val icon: ImageVector,
     val destination: WeatherNavDestination
 ) {
-    HOME("Home", Icons.Default.Home, WeatherNavDestination.Home),
-    SEARCH("Search", Icons.Default.Search, WeatherNavDestination.Search),
-    FAVORITES("Favorites", Icons.Default.Favorite, WeatherNavDestination.Favorites),
-    SETTINGS("Settings", Icons.Default.Settings, WeatherNavDestination.Settings)
+    HOME(Icons.Default.Home, WeatherNavDestination.Home),
+    SEARCH(Icons.Default.Search, WeatherNavDestination.Search),
+    FAVORITES(Icons.Default.Favorite, WeatherNavDestination.Favorites),
+    SETTINGS(Icons.Default.Settings, WeatherNavDestination.Settings);
+
+    @Composable
+    fun getLabel(): String {
+        val strings = LocalWeatherStrings.current
+        return when (this) {
+            HOME -> strings.navHome
+            SEARCH -> strings.navSearch
+            FAVORITES -> strings.navFavorites
+            SETTINGS -> strings.navSettings
+        }
+    }
 }
 
 /**
@@ -74,18 +83,19 @@ fun WeatherBottomNavBar(
         ) {
             NavigationTab.entries.forEach { tab ->
                 val selected = tab == currentTab
+                val labelText = tab.getLabel()
                 NavigationBarItem(
                     selected = selected,
                     onClick = { onTabSelected(tab) },
                     icon = {
                         Icon(
                             imageVector = tab.icon,
-                            contentDescription = tab.title
+                            contentDescription = labelText
                         )
                     },
                     label = {
                         Text(
-                            text = tab.title,
+                            text = labelText,
                             style = MaterialTheme.typography.labelSmall
                         )
                     },
