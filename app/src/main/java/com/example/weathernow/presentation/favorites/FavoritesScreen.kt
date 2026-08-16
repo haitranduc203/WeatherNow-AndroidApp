@@ -92,25 +92,35 @@ class FavoritesViewModel(
 
     fun loadFavorites() {
         viewModelScope.launch {
-            _uiState.value = FavoritesUiState.Loading
+            val hanoiLocation = WeatherLocation(
+                id = "vn_hanoi",
+                name = "Hà Nội",
+                country = "Việt Nam",
+                adminArea = "Thủ đô Hà Nội",
+                latitude = 21.0285,
+                longitude = 105.8542,
+                timezone = "Asia/Ho_Chi_Minh",
+                isFavorite = true
+            )
 
-            val dummyCurrent = FavoriteItemUiModel(
-                location = WeatherLocation(
-                    id = "current",
-                    name = "Hanoi",
-                    country = "Vietnam",
-                    latitude = 21.0285,
-                    longitude = 105.8542
-                ),
+            val currentHanoi = FavoriteItemUiModel(
+                location = hanoiLocation,
                 temperature = 28.0,
-                condition = WeatherCondition.PARTLY_CLOUDY,
-                localTime = "09:00",
+                condition = WeatherCondition.CLEAR,
+                localTime = java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")),
                 minTemp = 24.0,
                 maxTemp = 33.0
             )
 
             weatherRepository.observeFavoriteLocations().collect { favLocations ->
                 val items = favLocations.map { loc ->
+                    val tz = try {
+                        if (!loc.timezone.isNullOrBlank()) java.time.ZoneId.of(loc.timezone) else java.time.ZoneId.systemDefault()
+                    } catch (_: Exception) {
+                        java.time.ZoneId.systemDefault()
+                    }
+                    val localTimeFormatted = java.time.ZonedDateTime.now(tz).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
+
                     FavoriteItemUiModel(
                         location = loc,
                         temperature = when (loc.name) {
@@ -118,27 +128,26 @@ class FavoritesViewModel(
                             "Paris" -> 22.0
                             "New York" -> 16.0
                             "Sydney" -> 24.0
+                            "Hà Nội" -> 28.0
+                            "Thái Bình" -> 28.0
+                            "Hưng Yên" -> 28.0
                             else -> 25.0
                         },
                         condition = when (loc.name) {
                             "Tokyo" -> WeatherCondition.CLEAR
                             "Paris" -> WeatherCondition.RAIN
                             "New York" -> WeatherCondition.CLOUDY
-                            else -> WeatherCondition.CLEAR
+                            "Thái Bình", "Hưng Yên", "Hà Nội" -> WeatherCondition.CLEAR
+                            else -> WeatherCondition.PARTLY_CLOUDY
                         },
-                        localTime = when (loc.name) {
-                            "Tokyo" -> "16:30"
-                            "Paris" -> "08:30"
-                            "New York" -> "02:30"
-                            else -> "18:30"
-                        },
+                        localTime = localTimeFormatted,
                         minTemp = 18.0,
                         maxTemp = 28.0
                     )
                 }
 
                 _uiState.value = FavoritesUiState.Success(
-                    currentLocation = dummyCurrent,
+                    currentLocation = currentHanoi,
                     favoritesList = items
                 )
             }

@@ -81,18 +81,18 @@ class SearchViewModel(
     private val locationRepository: com.example.weathernow.domain.repository.LocationRepository = com.example.weathernow.data.repository.LocationRepositoryImpl(),
     private val weatherRepository: com.example.weathernow.domain.repository.WeatherRepository = com.example.weathernow.data.repository.WeatherRepositoryImpl()
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(
-        SearchUiModel(
-            recentSearches = listOf(
-                WeatherLocation(id = "1581130", name = "Hanoi", country = "Vietnam", adminArea = "Ha Noi", latitude = 21.0285, longitude = 105.8542),
-                WeatherLocation(id = "1850147", name = "Tokyo", country = "Japan", adminArea = "Tokyo", latitude = 35.6762, longitude = 139.6503),
-                WeatherLocation(id = "2988507", name = "Paris", country = "France", adminArea = "Île-de-France", latitude = 48.8566, longitude = 2.3522)
-            )
-        )
-    )
+    private val _uiState = MutableStateFlow(SearchUiModel())
     val uiState: StateFlow<SearchUiModel> = _uiState.asStateFlow()
 
     private var searchJob: Job? = null
+
+    init {
+        viewModelScope.launch {
+            locationRepository.observeRecentSearches(10).collect { recentList ->
+                _uiState.value = _uiState.value.copy(recentSearches = recentList)
+            }
+        }
+    }
 
     fun onQueryChange(newQuery: String) {
         _uiState.value = _uiState.value.copy(query = newQuery)
@@ -109,7 +109,7 @@ class SearchViewModel(
 
         searchJob = viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSearching = true, errorMessage = null)
-            delay(400)
+            delay(350)
             when (val result = locationRepository.searchLocations(newQuery)) {
                 is com.example.weathernow.core.common.Resource.Success -> {
                     _uiState.value = _uiState.value.copy(
@@ -134,27 +134,39 @@ class SearchViewModel(
         onQueryChange("")
     }
 
+    fun onLocationSelected(location: WeatherLocation) {
+        viewModelScope.launch {
+            locationRepository.saveRecentSearch(location)
+        }
+    }
+
     fun toggleFavorite(location: WeatherLocation) {
         viewModelScope.launch {
-            if (location.isFavorite) {
-                weatherRepository.removeFavoriteLocation(location.id ?: location.name)
+            val newFavStatus = locationRepository.toggleFavorite(location)
+            if (newFavStatus) {
+                weatherRepository.addFavoriteLocation(location.copy(isFavorite = true))
             } else {
-                weatherRepository.addFavoriteLocation(location)
+                weatherRepository.removeFavoriteLocation(location.id ?: location.name)
             }
             val updated = _uiState.value.searchResults.map {
-                if (it.id == location.id) it.copy(isFavorite = !it.isFavorite) else it
+                if (it.id == location.id || (it.latitude == location.latitude && it.longitude == location.longitude)) {
+                    it.copy(isFavorite = newFavStatus)
+                } else it
             }
             _uiState.value = _uiState.value.copy(searchResults = updated)
         }
     }
 
     fun removeRecentSearch(location: WeatherLocation) {
-        val updated = _uiState.value.recentSearches.filterNot { it.id == location.id }
-        _uiState.value = _uiState.value.copy(recentSearches = updated)
+        viewModelScope.launch {
+            locationRepository.deleteRecentSearch(location.id ?: location.name)
+        }
     }
 
     fun clearAllRecentSearches() {
-        _uiState.value = _uiState.value.copy(recentSearches = emptyList())
+        viewModelScope.launch {
+            locationRepository.clearRecentSearches()
+        }
     }
 }
 
@@ -174,7 +186,10 @@ fun SearchScreen(
         content = state,
         onQueryChange = viewModel::onQueryChange,
         onClearQuery = viewModel::clearQuery,
-        onLocationSelected = onLocationSelected,
+        onLocationSelected = { loc ->
+            viewModel.onLocationSelected(loc)
+            onLocationSelected(loc)
+        },
         onToggleFavorite = viewModel::toggleFavorite,
         onRemoveRecent = viewModel::removeRecentSearch,
         onClearAllRecent = viewModel::clearAllRecentSearches,

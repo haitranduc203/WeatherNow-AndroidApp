@@ -110,12 +110,17 @@ data class SettingsUiState(
 )
 
 class SettingsViewModel : ViewModel() {
-    private val _cacheState = MutableStateFlow("4.8 MB" to "Updated 15m ago")
+    private val cachedWeatherDao = com.example.weathernow.data.local.db.WeatherDatabase.getInstanceOrNull()?.cachedWeatherDao()
+    private val _cacheState = MutableStateFlow("120 KB" to "Vừa cập nhật")
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     init {
         viewModelScope.launch {
+            val count = cachedWeatherDao?.getCacheCount() ?: 4
+            val sizeKb = (count * 24).coerceAtLeast(24)
+            _cacheState.value = "$sizeKb KB ($count vị trí)" to "Vừa cập nhật"
+
             combine(UserPreferencesRepository.preferencesFlow, _cacheState) { prefs, cache ->
                 SettingsUiState(
                     preferences = prefs,
@@ -138,7 +143,8 @@ class SettingsViewModel : ViewModel() {
 
     fun clearOfflineCache() {
         viewModelScope.launch {
-            _cacheState.value = "0 KB" to "Cleared just now"
+            cachedWeatherDao?.clearAllCache()
+            _cacheState.value = "0 KB" to "Đã xóa sạch"
         }
     }
 }
