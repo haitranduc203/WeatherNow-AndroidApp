@@ -76,7 +76,7 @@ fun OnboardingContent(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(AtmosphericGradientDark)
+            .background(com.example.weathernow.theme.atmosphericGradient())
             .padding(24.dp)
     ) {
         Column(

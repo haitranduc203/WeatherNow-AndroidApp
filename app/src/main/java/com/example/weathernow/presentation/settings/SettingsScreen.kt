@@ -179,7 +179,7 @@ fun SettingsContent(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(AtmosphericGradientDark)
+                .background(com.example.weathernow.theme.atmosphericGradient())
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -349,7 +349,7 @@ fun SettingsContent(
                             Text(
                                 text = "Open-Meteo API",
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                                color = WeatherSecondary
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                         Row(

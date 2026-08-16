@@ -33,6 +33,7 @@ import com.example.weathernow.theme.GlassCardBorderLight
 import com.example.weathernow.theme.WeatherNowTheme
 import com.example.weathernow.theme.WeatherPrimary
 import com.example.weathernow.theme.WeatherPrimaryContainer
+import com.example.weathernow.theme.WeatherPrimaryLight
 
 enum class NavigationTab(
     val title: String,
@@ -89,11 +90,11 @@ fun WeatherBottomNavBar(
                         )
                     },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = WeatherPrimary,
-                        selectedTextColor = WeatherPrimary,
-                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        indicatorColor = WeatherPrimaryContainer.copy(alpha = 0.45f)
+                        selectedIconColor = if (isDark) WeatherPrimary else WeatherPrimaryLight,
+                        selectedTextColor = if (isDark) WeatherPrimary else WeatherPrimaryLight,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                        indicatorColor = if (isDark) WeatherPrimaryContainer.copy(alpha = 0.45f) else Color(0xFFE0E3F9)
                     )
                 )
             }

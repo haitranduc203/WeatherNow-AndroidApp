@@ -200,7 +200,7 @@ fun FavoritesContent(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(AtmosphericGradientDark)
+                .background(com.example.weathernow.theme.atmosphericGradient())
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp)
         ) {
@@ -342,7 +342,7 @@ private fun FavoriteLocationCard(
                 Text(
                     text = "${item.condition.displayName} • H: ${item.maxTemp.toInt()}° L: ${item.minTemp.toInt()}°",
                     style = MaterialTheme.typography.bodySmall,
-                    color = WeatherSecondary
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
 

@@ -251,7 +251,7 @@ fun HomeContent(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(AtmosphericGradientDark)
+                .background(com.example.weathernow.theme.atmosphericGradient())
                 .padding(innerPadding)
         ) {
             when (uiState) {
@@ -373,7 +373,7 @@ private fun HeroWeatherCard(
             Text(
                 text = currentWeather.condition.displayName,
                 style = MaterialTheme.typography.titleMedium,
-                color = WeatherSecondary,
+                color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold
             )
             Spacer(modifier = Modifier.height(6.dp))
@@ -407,7 +407,7 @@ private fun KeyWeatherMetricsGrid(
                 value = "${currentWeather.humidityPercent ?: 0}%",
                 subtitle = "Normal",
                 icon = Icons.Default.WaterDrop,
-                iconTint = WeatherSecondary,
+                iconTint = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier.weight(1f)
             )
             MetricTile(
@@ -415,7 +415,7 @@ private fun KeyWeatherMetricsGrid(
                 value = "${currentWeather.windSpeedKmh?.toInt() ?: 0} km/h",
                 subtitle = "Direction: ${currentWeather.windDirectionDegrees ?: 0}° NE",
                 icon = Icons.Default.Air,
-                iconTint = WeatherPrimary,
+                iconTint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -428,7 +428,7 @@ private fun KeyWeatherMetricsGrid(
                 value = "${currentWeather.uvIndex?.toInt() ?: 0}",
                 subtitle = "Moderate",
                 icon = Icons.Default.WbSunny,
-                iconTint = WeatherTertiary,
+                iconTint = MaterialTheme.colorScheme.tertiary,
                 modifier = Modifier.weight(1f)
             )
             MetricTile(
@@ -436,7 +436,7 @@ private fun KeyWeatherMetricsGrid(
                 value = "${currentWeather.precipitationMm?.toInt() ?: 0} mm",
                 subtitle = "Expected today",
                 icon = Icons.Default.WbTwilight,
-                iconTint = Color(0xFF64B5F6),
+                iconTint = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -522,7 +522,7 @@ private fun HourlyForecastSection(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color.White.copy(alpha = 0.04f))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
                             .padding(vertical = 10.dp, horizontal = 12.dp)
                     ) {
                         Text(
@@ -537,7 +537,7 @@ private fun HourlyForecastSection(
                             Text(
                                 text = "$rainProb%",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = WeatherSecondary,
+                                color = MaterialTheme.colorScheme.secondary,
                                 fontWeight = FontWeight.Bold
                             )
                         } else {

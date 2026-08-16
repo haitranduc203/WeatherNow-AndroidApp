@@ -184,7 +184,7 @@ fun ForecastContent(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(AtmosphericGradientDark)
+                .background(com.example.weathernow.theme.atmosphericGradient())
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp)
         ) {
@@ -252,13 +252,13 @@ private fun HourlyTrendChartCard(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Surface(
-                    color = WeatherSecondary.copy(alpha = 0.15f),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
                     shape = CircleShape
                 ) {
                     Text(
                         text = "Live Trend",
                         style = MaterialTheme.typography.labelSmall,
-                        color = WeatherSecondary,
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                     )
                 }
@@ -272,7 +272,7 @@ private fun HourlyTrendChartCard(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color.White.copy(alpha = 0.05f))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
                             .padding(vertical = 12.dp, horizontal = 12.dp)
                     ) {
                         Text(
@@ -295,7 +295,7 @@ private fun HourlyTrendChartCard(
                                 .width(20.dp)
                                 .height(32.dp)
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(Color.White.copy(alpha = 0.08f)),
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
                             contentAlignment = Alignment.BottomCenter
                         ) {
                             Box(
@@ -303,14 +303,14 @@ private fun HourlyTrendChartCard(
                                     .fillMaxWidth()
                                     .height((32 * (rainProb / 100f)).dp)
                                     .clip(RoundedCornerShape(4.dp))
-                                    .background(WeatherSecondary)
+                                    .background(MaterialTheme.colorScheme.primary)
                             )
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "$rainProb%",
                             style = MaterialTheme.typography.labelSmall,
-                            color = WeatherSecondary
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }

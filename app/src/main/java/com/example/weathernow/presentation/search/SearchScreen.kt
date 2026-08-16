@@ -185,7 +185,7 @@ fun SearchContent(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(AtmosphericGradientDark)
+                .background(com.example.weathernow.theme.atmosphericGradient())
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp)
         ) {
@@ -207,7 +207,7 @@ fun SearchContent(
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "Search",
-                        tint = WeatherPrimary
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 },
                 trailingIcon = {
@@ -224,10 +224,10 @@ fun SearchContent(
                 singleLine = true,
                 shape = RoundedCornerShape(28.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Color.White.copy(alpha = 0.06f),
-                    unfocusedContainerColor = Color.White.copy(alpha = 0.04f),
-                    focusedBorderColor = WeatherPrimary,
-                    unfocusedBorderColor = Color.White.copy(alpha = 0.12f)
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                 )
             )
 
@@ -239,20 +239,24 @@ fun SearchContent(
                 item {
                     AssistChip(
                         onClick = { onQueryChange("Current Location") },
-                        label = { Text("Use My Location", color = WeatherPrimary) },
+                        label = { Text("Use My Location", color = MaterialTheme.colorScheme.primary) },
                         leadingIcon = {
                             Icon(
                                 Icons.Default.MyLocation,
                                 contentDescription = null,
-                                tint = WeatherPrimary,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(16.dp)
                             )
                         },
                         shape = CircleShape,
                         colors = AssistChipDefaults.assistChipColors(
-                            containerColor = WeatherPrimary.copy(alpha = 0.12f)
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
                         ),
-                        border = AssistChipDefaults.assistChipBorder(enabled = true, borderColor = WeatherPrimary.copy(alpha = 0.3f), borderWidth = 1.dp)
+                        border = AssistChipDefaults.assistChipBorder(
+                            enabled = true,
+                            borderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                            borderWidth = 1.dp
+                        )
                     )
                 }
                 val popularCities = listOf("Tokyo", "Paris", "New York", "Singapore", "London", "Sydney")
@@ -262,9 +266,13 @@ fun SearchContent(
                         label = { Text(city, color = MaterialTheme.colorScheme.onSurface) },
                         shape = CircleShape,
                         colors = AssistChipDefaults.assistChipColors(
-                            containerColor = Color.White.copy(alpha = 0.05f)
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
                         ),
-                        border = AssistChipDefaults.assistChipBorder(enabled = true, borderColor = Color.White.copy(alpha = 0.1f), borderWidth = 1.dp)
+                        border = AssistChipDefaults.assistChipBorder(
+                            enabled = true,
+                            borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                            borderWidth = 1.dp
+                        )
                     )
                 }
             }
@@ -293,7 +301,7 @@ fun SearchContent(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         TextButton(onClick = onClearAllRecent) {
-                            Text("Clear all", color = WeatherSecondary, style = MaterialTheme.typography.labelMedium)
+                            Text("Clear all", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
                         }
                     }
 
@@ -318,7 +326,7 @@ fun SearchContent(
                                         Icon(
                                             imageVector = Icons.Default.History,
                                             contentDescription = null,
-                                            tint = WeatherSecondary,
+                                            tint = MaterialTheme.colorScheme.primary,
                                             modifier = Modifier.size(20.dp)
                                         )
                                         Spacer(modifier = Modifier.width(12.dp))
