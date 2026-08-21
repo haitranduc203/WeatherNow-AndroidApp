@@ -13,11 +13,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -49,6 +52,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -513,9 +517,11 @@ private fun FavoriteCityCard(
 ) {
     val currentLang = LocalAppLanguage.current
     val strings = LocalWeatherStrings.current
+    val locTag = item.location.id ?: item.location.name
     GlassCard(
         modifier = modifier
             .fillMaxWidth()
+            .testTag("favorite_card_$locTag")
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(20.dp),
         contentPadding = 16.dp
@@ -526,24 +532,28 @@ private fun FavoriteCityCard(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = item.location.getDisplayName(strings),
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.testTag("favorite_name_$locTag")
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(6.dp),
+                    modifier = Modifier.testTag("favorite_time_$locTag")
+                ) {
                     Text(
-                        text = item.location.getDisplayName(strings),
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onSurface
+                        text = item.localTime,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        softWrap = false,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Surface(
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(6.dp)
-                    ) {
-                        Text(
-                            text = item.localTime,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 val areaSubtitle = item.location.formattedArea.ifBlank { item.location.country ?: "" }
@@ -551,20 +561,31 @@ private fun FavoriteCityCard(
                     Text(
                         text = areaSubtitle,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.testTag("favorite_area_$locTag")
                     )
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = "${item.condition.localizedName(currentLang)} • H: ${item.maxTemp.toInt()}° L: ${item.minTemp.toInt()}°",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.testTag("favorite_summary_$locTag")
                 )
             }
 
+            Spacer(modifier = Modifier.width(12.dp))
+
             Column(
                 horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .wrapContentWidth()
+                    .testTag("favorite_weather_$locTag")
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     WeatherConditionIcon(condition = item.condition, size = 36.dp)
@@ -576,7 +597,12 @@ private fun FavoriteCityCard(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
-                IconButton(onClick = onDelete) {
+                IconButton(
+                    onClick = onDelete,
+                    modifier = Modifier
+                        .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                        .testTag("favorite_delete_$locTag")
+                ) {
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Remove",
