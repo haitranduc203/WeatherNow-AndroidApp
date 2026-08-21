@@ -14,6 +14,7 @@ import com.example.weathernow.data.local.db.dao.FavoriteLocationDao
 import com.example.weathernow.data.local.db.dao.RecentSearchDao
 import com.example.weathernow.data.local.db.entity.FavoriteLocationEntity
 import com.example.weathernow.data.local.db.entity.RecentSearchEntity
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -72,6 +73,8 @@ class LocationRepositoryImpl(
             }
 
             Resource.Success(combined)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             // If network fails but we have local matches, return local matches gracefully
             if (localMatches.isNotEmpty()) {

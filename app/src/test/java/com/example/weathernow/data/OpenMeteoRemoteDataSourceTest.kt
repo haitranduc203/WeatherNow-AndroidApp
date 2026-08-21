@@ -5,6 +5,14 @@ import com.example.weathernow.data.mapper.ErrorMapper
 import kotlinx.serialization.SerializationException
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
+import com.example.weathernow.data.remote.api.OpenMeteoForecastApi
+import com.example.weathernow.data.remote.api.OpenMeteoGeocodingApi
+import com.example.weathernow.data.remote.datasource.OpenMeteoRemoteDataSourceImpl
+import com.example.weathernow.data.remote.dto.OpenMeteoForecastDto
+import com.example.weathernow.data.remote.dto.OpenMeteoGeocodingDto
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import retrofit2.HttpException
@@ -14,6 +22,73 @@ import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 
 class OpenMeteoRemoteDataSourceTest {
+
+    private class FakeForecastApi(private val exceptionToThrow: Throwable) : OpenMeteoForecastApi {
+        override suspend fun getForecast(
+            latitude: Double,
+            longitude: Double,
+            current: String,
+            hourly: String,
+            daily: String,
+            timezone: String,
+            forecastDays: Int,
+            temperatureUnit: String,
+            windSpeedUnit: String
+        ): OpenMeteoForecastDto {
+            throw exceptionToThrow
+        }
+    }
+
+    private class FakeGeocodingApi(private val exceptionToThrow: Throwable) : OpenMeteoGeocodingApi {
+        override suspend fun searchLocations(
+            name: String,
+            count: Int,
+            language: String,
+            format: String
+        ): OpenMeteoGeocodingDto {
+            throw exceptionToThrow
+        }
+    }
+
+    @Test
+    fun `getForecast propagates CancellationException unchanged`() = runTest {
+        val expectedCancellation = CancellationException("Forecast coroutine cancelled")
+        val fakeForecastApi = FakeForecastApi(expectedCancellation)
+        val fakeGeocodingApi = FakeGeocodingApi(RuntimeException("Unused"))
+        val dataSource = OpenMeteoRemoteDataSourceImpl(
+            forecastApi = fakeForecastApi,
+            geocodingApi = fakeGeocodingApi
+        )
+
+        var caught: Throwable? = null
+        try {
+            dataSource.getForecast(latitude = 21.0285, longitude = 105.8542)
+        } catch (e: Throwable) {
+            caught = e
+        }
+
+        assertSame(expectedCancellation, caught)
+    }
+
+    @Test
+    fun `searchLocations propagates CancellationException unchanged`() = runTest {
+        val expectedCancellation = CancellationException("Geocoding coroutine cancelled")
+        val fakeForecastApi = FakeForecastApi(RuntimeException("Unused"))
+        val fakeGeocodingApi = FakeGeocodingApi(expectedCancellation)
+        val dataSource = OpenMeteoRemoteDataSourceImpl(
+            forecastApi = fakeForecastApi,
+            geocodingApi = fakeGeocodingApi
+        )
+
+        var caught: Throwable? = null
+        try {
+            dataSource.searchLocations(name = "Hanoi")
+        } catch (e: Throwable) {
+            caught = e
+        }
+
+        assertSame(expectedCancellation, caught)
+    }
 
     @Test
     fun `mapThrowableToNetworkError maps UnknownHostException to NetworkUnavailable`() {

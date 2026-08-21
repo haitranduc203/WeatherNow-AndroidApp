@@ -6,6 +6,7 @@ import com.example.weathernow.data.remote.api.OpenMeteoForecastApi
 import com.example.weathernow.data.remote.api.OpenMeteoGeocodingApi
 import com.example.weathernow.data.remote.dto.OpenMeteoForecastDto
 import com.example.weathernow.data.remote.dto.OpenMeteoGeocodingDto
+import kotlinx.coroutines.CancellationException
 
 interface OpenMeteoRemoteDataSource {
     suspend fun getForecast(
@@ -40,8 +41,10 @@ class OpenMeteoRemoteDataSourceImpl(
                 timezone = timezone,
                 forecastDays = forecastDays
             )
-        } catch (e: Throwable) {
-            throw ErrorMapper.mapThrowableToNetworkError(e)
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (error: Exception) {
+            throw ErrorMapper.mapThrowableToNetworkError(error)
         }
     }
 
@@ -56,8 +59,10 @@ class OpenMeteoRemoteDataSourceImpl(
                 count = count,
                 language = language
             )
-        } catch (e: Throwable) {
-            throw ErrorMapper.mapThrowableToNetworkError(e)
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (error: Exception) {
+            throw ErrorMapper.mapThrowableToNetworkError(error)
         }
     }
 }

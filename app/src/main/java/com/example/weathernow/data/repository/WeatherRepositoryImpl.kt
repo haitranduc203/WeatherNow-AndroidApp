@@ -90,6 +90,8 @@ class WeatherRepositoryImpl(
                 fetchedAtEpochMillis = System.currentTimeMillis()
             )
             dao.insertOrReplace(entity)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (_: Exception) {
             // Ignore cache save errors
         }
@@ -211,6 +213,8 @@ class WeatherRepositoryImpl(
             val dto = remoteDataSource.getForecast(latitude = latitude, longitude = longitude)
             saveForecastToCache(latitude, longitude, dto)
             Resource.Success(Unit)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Resource.Error(message = e.message ?: "Failed to refresh weather", cause = e)
         }

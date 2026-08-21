@@ -8,20 +8,21 @@ import com.example.weathernow.data.local.db.entity.RecentSearchEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
+@JvmSuppressWildcards
 interface RecentSearchDao {
 
     @Query("SELECT * FROM recent_searches ORDER BY searchedAt DESC LIMIT :limit")
     fun observeRecentSearches(limit: Int = 10): Flow<List<RecentSearchEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun insertSearch(entity: RecentSearchEntity): Long
+    suspend fun insertSearch(entity: RecentSearchEntity): Long
 
     @Query("DELETE FROM recent_searches WHERE id = :id")
-    fun deleteSearchById(id: String): Int
+    suspend fun deleteSearchById(id: String): Int
 
     @Query("DELETE FROM recent_searches")
-    fun clearRecentSearches(): Int
+    suspend fun clearRecentSearches(): Int
 
     @Query("SELECT COUNT(*) FROM recent_searches")
-    fun getSearchCount(): Int
+    suspend fun getSearchCount(): Int
 }
