@@ -43,14 +43,21 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.weathernow.domain.model.AppLanguage
@@ -62,18 +69,27 @@ import com.example.weathernow.presentation.components.WeatherLoadingView
 import com.example.weathernow.presentation.util.LocalWeatherStrings
 import com.example.weathernow.presentation.util.ProvideWeatherLanguage
 import com.example.weathernow.theme.WeatherNowTheme
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
+sealed interface SearchUiEvent {
+    data class DeviceLocationFound(val location: WeatherLocation) : SearchUiEvent
+}
 
 data class SearchUiModel(
     val query: String = "",
     val searchResults: List<WeatherLocation> = emptyList(),
     val recentSearches: List<WeatherLocation> = emptyList(),
     val isSearching: Boolean = false,
+    val isLocating: Boolean = false,
     val errorMessage: String? = null
 )
 
@@ -84,7 +100,11 @@ class SearchViewModel(
     private val _uiState = MutableStateFlow(SearchUiModel())
     val uiState: StateFlow<SearchUiModel> = _uiState.asStateFlow()
 
+    private val _events = MutableSharedFlow<SearchUiEvent>(extraBufferCapacity = 1)
+    val events: SharedFlow<SearchUiEvent> = _events.asSharedFlow()
+
     private var searchJob: Job? = null
+    private var locateJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -172,10 +192,61 @@ class SearchViewModel(
             locationRepository.clearRecentSearches()
         }
     }
+
+    fun useCurrentLocation() {
+        // Guard against duplicate taps while a request is in flight
+        if (_uiState.value.isLocating) return
+
+        locateJob?.cancel()
+        locateJob = viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLocating = true, errorMessage = null)
+            try {
+                when (val result = locationRepository.getCurrentDeviceLocation()) {
+                    is com.example.weathernow.core.common.Resource.Success -> {
+                        try {
+                            locationRepository.saveRecentSearch(result.data)
+                        } catch (cancellation: CancellationException) {
+                            throw cancellation
+                        } catch (e: Exception) {
+                            // Non-fatal: do not block navigation or leave UI stuck if saving recent fails
+                        }
+                        _uiState.value = _uiState.value.copy(isLocating = false)
+                        _events.tryEmit(SearchUiEvent.DeviceLocationFound(result.data))
+                    }
+                    is com.example.weathernow.core.common.Resource.Error -> {
+                        _uiState.value = _uiState.value.copy(
+                            isLocating = false,
+                            errorMessage = result.message
+                        )
+                    }
+                    is com.example.weathernow.core.common.Resource.Loading -> {
+                        _uiState.value = _uiState.value.copy(
+                            isLocating = false,
+                            errorMessage = "Unexpected loading state while obtaining device location"
+                        )
+                    }
+                }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isLocating = false,
+                    errorMessage = e.message ?: "Failed to get device location"
+                )
+            }
+        }
+    }
+
+    fun onLocationPermissionDenied() {
+        _uiState.value = _uiState.value.copy(
+            isLocating = false,
+            errorMessage = "Location permission is required to use this feature"
+        )
+    }
 }
 
 /**
- * Stateful SearchScreen.
+ * Stateful SearchScreen with location permission flow.
  */
 @Composable
 fun SearchScreen(
@@ -185,6 +256,31 @@ fun SearchScreen(
     viewModel: SearchViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    // Permission launcher
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
+        val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (fineGranted || coarseGranted) {
+            viewModel.useCurrentLocation()
+        } else {
+            viewModel.onLocationPermissionDenied()
+        }
+    }
+
+    // Collect one-time events and navigate
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is SearchUiEvent.DeviceLocationFound -> {
+                    onLocationSelected(event.location)
+                }
+            }
+        }
+    }
 
     SearchContent(
         content = state,
@@ -197,6 +293,25 @@ fun SearchScreen(
         onToggleFavorite = viewModel::toggleFavorite,
         onRemoveRecent = viewModel::removeRecentSearch,
         onClearAllRecent = viewModel::clearAllRecentSearches,
+        onUseMyLocation = {
+            // Check if permission is already granted
+            val hasFine = ContextCompat.checkSelfPermission(
+                context, Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+            val hasCoarse = ContextCompat.checkSelfPermission(
+                context, Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+            if (hasFine || hasCoarse) {
+                viewModel.useCurrentLocation()
+            } else {
+                locationPermissionLauncher.launch(
+                    arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    )
+                )
+            }
+        },
         onNavigateBack = onNavigateBack,
         modifier = modifier
     )
@@ -215,6 +330,7 @@ fun SearchContent(
     onToggleFavorite: (WeatherLocation) -> Unit,
     onRemoveRecent: (WeatherLocation) -> Unit,
     onClearAllRecent: () -> Unit,
+    onUseMyLocation: () -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -290,8 +406,14 @@ fun SearchContent(
             ) {
                 item {
                     AssistChip(
-                        onClick = { onQueryChange("Hanoi") },
-                        label = { Text(strings.useMyLocation, color = MaterialTheme.colorScheme.primary) },
+                        onClick = onUseMyLocation,
+                        enabled = !content.isLocating,
+                        label = {
+                            Text(
+                                if (content.isLocating) "Locating…" else strings.useMyLocation,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        },
                         leadingIcon = {
                             Icon(
                                 Icons.Default.MyLocation,
@@ -514,6 +636,7 @@ private fun SearchScreenDarkPreview() {
                 onToggleFavorite = {},
                 onRemoveRecent = {},
                 onClearAllRecent = {},
+                onUseMyLocation = {},
                 onNavigateBack = {}
             )
         }
@@ -538,6 +661,7 @@ private fun SearchScreenLightPreview() {
                 onToggleFavorite = {},
                 onRemoveRecent = {},
                 onClearAllRecent = {},
+                onUseMyLocation = {},
                 onNavigateBack = {}
             )
         }

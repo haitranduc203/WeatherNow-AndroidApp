@@ -2,6 +2,8 @@ package com.example.weathernow.core.di
 
 import android.content.Context
 import com.example.weathernow.data.local.db.WeatherDatabase
+import com.example.weathernow.data.location.AndroidDeviceLocationDataSource
+import com.example.weathernow.data.location.DeviceLocationDataSource
 import com.example.weathernow.data.remote.datasource.OpenMeteoRemoteDataSource
 import com.example.weathernow.data.repository.LocationRepositoryImpl
 import com.example.weathernow.data.repository.WeatherRepositoryImpl
@@ -29,6 +31,10 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
         com.example.weathernow.data.remote.datasource.OpenMeteoRemoteDataSourceImpl()
     }
 
+    private val deviceLocationDataSource: DeviceLocationDataSource by lazy {
+        AndroidDeviceLocationDataSource(context)
+    }
+
     override val weatherRepository: WeatherRepository by lazy {
         WeatherRepositoryImpl(
             remoteDataSource = remoteDataSource,
@@ -41,7 +47,8 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
         LocationRepositoryImpl(
             remoteDataSource = remoteDataSource,
             favoriteLocationDao = database.favoriteLocationDao(),
-            recentSearchDao = database.recentSearchDao()
+            recentSearchDao = database.recentSearchDao(),
+            deviceLocationDataSource = deviceLocationDataSource
         )
     }
 

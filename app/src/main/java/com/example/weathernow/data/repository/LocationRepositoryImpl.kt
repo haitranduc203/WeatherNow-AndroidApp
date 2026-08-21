@@ -2,11 +2,13 @@ package com.example.weathernow.data.repository
 
 import com.example.weathernow.core.common.Resource
 import com.example.weathernow.data.local.VietnamLocationsCatalog
+import com.example.weathernow.data.location.DeviceLocationDataSource
 import com.example.weathernow.data.mapper.LocationDtoMapper
 import com.example.weathernow.data.remote.datasource.OpenMeteoRemoteDataSource
 import com.example.weathernow.data.remote.datasource.OpenMeteoRemoteDataSourceImpl
 import com.example.weathernow.domain.model.WeatherLocation
 import com.example.weathernow.domain.repository.LocationRepository
+import java.util.Locale
 import kotlin.math.abs
 
 import com.example.weathernow.data.local.db.WeatherDatabase
@@ -24,7 +26,8 @@ import kotlinx.coroutines.flow.map
 class LocationRepositoryImpl(
     private val remoteDataSource: OpenMeteoRemoteDataSource = OpenMeteoRemoteDataSourceImpl(),
     favoriteLocationDao: FavoriteLocationDao? = null,
-    recentSearchDao: RecentSearchDao? = null
+    recentSearchDao: RecentSearchDao? = null,
+    private val deviceLocationDataSource: DeviceLocationDataSource? = null
 ) : LocationRepository {
 
     private val favoriteLocationDao: FavoriteLocationDao? = favoriteLocationDao
@@ -90,19 +93,37 @@ class LocationRepositoryImpl(
     }
 
     override suspend fun getCurrentDeviceLocation(): Resource<WeatherLocation> {
-        // Default location for Hanoi, Vietnam
-        val hanoiEntry = VietnamLocationsCatalog.entries.firstOrNull { it.id == "vn_hanoi" }
-        val location = hanoiEntry?.toWeatherLocation() ?: WeatherLocation(
-            id = "vn_hanoi",
-            name = "Hà Nội",
-            country = "Việt Nam",
-            adminArea = "Thủ đô Hà Nội",
-            latitude = 21.0285,
-            longitude = 105.8542,
-            timezone = "Asia/Ho_Chi_Minh",
-            isFavorite = false
-        )
-        return Resource.Success(location)
+        val provider = deviceLocationDataSource
+            ?: return Resource.Error("Device location provider is not available")
+
+        return try {
+            when (val result = provider.getCurrentCoordinates()) {
+                is Resource.Success -> {
+                    val coords = result.data
+                    val id = String.format(
+                        Locale.US, "device_%.4f_%.4f",
+                        coords.latitude, coords.longitude
+                    )
+                    val location = WeatherLocation(
+                        id = id,
+                        name = "Current location",
+                        country = null,
+                        adminArea = null,
+                        latitude = coords.latitude,
+                        longitude = coords.longitude,
+                        timezone = null,
+                        isFavorite = false
+                    )
+                    Resource.Success(location)
+                }
+                is Resource.Error -> Resource.Error(result.message, result.cause)
+                is Resource.Loading -> Resource.Error("Unexpected loading state")
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to get device location", cause = e)
+        }
     }
 
     override fun observeRecentSearches(limit: Int): Flow<List<WeatherLocation>> {
