@@ -69,6 +69,7 @@ import com.example.weathernow.presentation.components.WeatherLoadingView
 import com.example.weathernow.presentation.util.LocalAppLanguage
 import com.example.weathernow.presentation.util.LocalWeatherStrings
 import com.example.weathernow.presentation.util.ProvideWeatherLanguage
+import com.example.weathernow.presentation.util.getDisplayName
 import com.example.weathernow.theme.WeatherNowTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -338,8 +339,14 @@ fun FavoritesContent(
                                                         color = MaterialTheme.colorScheme.primary,
                                                         fontWeight = FontWeight.SemiBold
                                                     )
+                                                    val locDisplayName = current.location.getDisplayName(strings)
+                                                    val title = if (current.location.country.isNullOrBlank() || locDisplayName.contains(current.location.country) || current.location.id?.startsWith("device_") == true || current.location.name.equals("Current location", ignoreCase = true)) {
+                                                        locDisplayName
+                                                    } else {
+                                                        "$locDisplayName, ${current.location.country}"
+                                                    }
                                                     Text(
-                                                        text = "${current.location.name}, ${current.location.country ?: ""}",
+                                                        text = title,
                                                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                                         color = MaterialTheme.colorScheme.onSurface
                                                     )
@@ -376,9 +383,9 @@ fun FavoritesContent(
                 }
                 is FavoritesUiState.Error -> {
                     WeatherEmptyView(
-                        title = "Error loading favorites",
+                        title = strings.unableToLoadWeather,
                         subtitle = uiState.message,
-                        actionText = "Try Again",
+                        actionText = strings.retry,
                         onAction = { /* reload */ },
                         modifier = Modifier.align(Alignment.Center)
                     )
@@ -399,6 +406,7 @@ private fun FavoriteCityCard(
     modifier: Modifier = Modifier
 ) {
     val currentLang = LocalAppLanguage.current
+    val strings = LocalWeatherStrings.current
     GlassCard(
         modifier = modifier
             .fillMaxWidth()
@@ -414,7 +422,7 @@ private fun FavoriteCityCard(
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = item.location.name,
+                        text = item.location.getDisplayName(strings),
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -591,6 +599,8 @@ fun AddFavoriteLocationBottomSheet(
         }
     }
 
+    val strings = LocalWeatherStrings.current
+
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
         containerColor = MaterialTheme.colorScheme.surface,
@@ -603,7 +613,7 @@ fun AddFavoriteLocationBottomSheet(
                 .heightIn(max = 560.dp)
         ) {
             Text(
-                text = "Thêm địa điểm yêu thích",
+                text = strings.addLocation,
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -614,7 +624,7 @@ fun AddFavoriteLocationBottomSheet(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Tìm tỉnh thành (ví dụ: Đà Nẵng, Huế, Đà Lạt...)") },
+                placeholder = { Text(strings.searchPlaceholder) },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Search,
@@ -683,7 +693,7 @@ fun AddFavoriteLocationBottomSheet(
                                     Spacer(modifier = Modifier.width(10.dp))
                                     Column {
                                         Text(
-                                            text = loc.name,
+                                            text = loc.getDisplayName(strings),
                                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
@@ -705,7 +715,7 @@ fun AddFavoriteLocationBottomSheet(
                 }
             } else {
                 Text(
-                    text = "Gợi ý tỉnh thành phổ biến",
+                    text = strings.popularCities,
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold
@@ -743,7 +753,7 @@ fun AddFavoriteLocationBottomSheet(
                                     Spacer(modifier = Modifier.width(10.dp))
                                     Column {
                                         Text(
-                                            text = loc.name,
+                                            text = loc.getDisplayName(strings),
                                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                                             color = MaterialTheme.colorScheme.onSurface
                                         )

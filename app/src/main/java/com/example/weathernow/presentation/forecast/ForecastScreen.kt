@@ -64,6 +64,7 @@ import com.example.weathernow.presentation.components.WeatherLoadingView
 import com.example.weathernow.presentation.util.LocalAppLanguage
 import com.example.weathernow.presentation.util.LocalWeatherStrings
 import com.example.weathernow.presentation.util.ProvideWeatherLanguage
+import com.example.weathernow.presentation.util.getLocalizedLocationName
 import com.example.weathernow.theme.TemperatureRangeGradient
 import com.example.weathernow.theme.WeatherNowTheme
 import com.example.weathernow.theme.WeatherPrimary
@@ -257,12 +258,13 @@ fun ForecastContent(
         topBar = {
             TopAppBar(
                 title = {
+                    val resolvedName = getLocalizedLocationName(uiState.locationName, null, strings)
                     val displayTitle = if (uiState.adminArea.isNullOrBlank()) {
-                        uiState.locationName
-                    } else if (uiState.locationName.contains(uiState.adminArea)) {
-                        uiState.locationName
+                        resolvedName
+                    } else if (resolvedName.contains(uiState.adminArea)) {
+                        resolvedName
                     } else {
-                        "${uiState.locationName}, ${uiState.adminArea}"
+                        "$resolvedName, ${uiState.adminArea}"
                     }
                     Column {
                         Text(
@@ -294,12 +296,13 @@ fun ForecastContent(
                         )
                     }
                     IconButton(onClick = {
+                        val resolvedName = getLocalizedLocationName(uiState.locationName, null, strings)
                         val displayTitle = if (uiState.adminArea.isNullOrBlank()) {
-                            uiState.locationName
-                        } else if (uiState.locationName.contains(uiState.adminArea)) {
-                            uiState.locationName
+                            resolvedName
+                        } else if (resolvedName.contains(uiState.adminArea)) {
+                            resolvedName
                         } else {
-                            "${uiState.locationName}, ${uiState.adminArea}"
+                            "$resolvedName, ${uiState.adminArea}"
                         }
                         val today = uiState.dailyList.firstOrNull()
                         val tempRange = if (today != null) " (${today.minTemperatureCelsius.toInt()}°C - ${today.maxTemperatureCelsius.toInt()}°C)" else ""

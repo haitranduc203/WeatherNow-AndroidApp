@@ -20,6 +20,9 @@ interface RecentSearchDao {
     @Query("DELETE FROM recent_searches WHERE id = :id")
     suspend fun deleteSearchById(id: String): Int
 
+    @Query("DELETE FROM recent_searches WHERE id GLOB 'device_*' OR (LOWER(name) = 'current location' AND country IS NULL)")
+    suspend fun deleteDeviceLocationSearches(): Int
+
     @Query("DELETE FROM recent_searches")
     suspend fun clearRecentSearches(): Int
 

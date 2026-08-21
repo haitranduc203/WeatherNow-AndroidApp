@@ -149,8 +149,15 @@ class LocationRepositoryImpl(
 
     override suspend fun saveRecentSearch(location: WeatherLocation) {
         val dao = recentSearchDao
+        val isDeviceLocation = location.id?.startsWith("device_") == true ||
+            (location.name.equals("Current location", ignoreCase = true) && location.country == null)
+
         if (dao != null) {
-            val key = "${String.format(java.util.Locale.US, "%.2f", location.latitude)}_${String.format(java.util.Locale.US, "%.2f", location.longitude)}"
+            if (isDeviceLocation) {
+                dao.deleteDeviceLocationSearches()
+            }
+            val key = location.id?.takeIf { it.isNotBlank() }
+                ?: "${String.format(Locale.US, "%.4f", location.latitude)}_${String.format(Locale.US, "%.4f", location.longitude)}"
             dao.insertSearch(
                 RecentSearchEntity(
                     id = key,
@@ -164,7 +171,14 @@ class LocationRepositoryImpl(
             )
         } else {
             val current = fallbackRecentSearches.value.toMutableList()
-            current.removeAll { it.name.equals(location.name, ignoreCase = true) }
+            if (isDeviceLocation) {
+                current.removeAll {
+                    it.id?.startsWith("device_") == true ||
+                        (it.name.equals("Current location", ignoreCase = true) && it.country == null)
+                }
+            } else {
+                current.removeAll { it.name.equals(location.name, ignoreCase = true) }
+            }
             current.add(0, location)
             fallbackRecentSearches.value = current.take(10)
         }

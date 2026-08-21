@@ -28,6 +28,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.weathernow.domain.model.AppLanguage
+import com.example.weathernow.presentation.util.LocalWeatherStrings
+import com.example.weathernow.presentation.util.ProvideWeatherLanguage
 import com.example.weathernow.theme.WeatherError
 import com.example.weathernow.theme.WeatherNowTheme
 import com.example.weathernow.theme.WeatherPrimary
@@ -42,6 +45,7 @@ fun OfflineBanner(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalWeatherStrings.current
     GlassCard(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -60,12 +64,11 @@ fun OfflineBanner(
             ) {
                 Icon(
                     imageVector = Icons.Default.CloudOff,
-                    contentDescription = "Offline",
+                    contentDescription = strings.offlineBanner,
                     tint = WeatherWarning,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                val strings = com.example.weathernow.presentation.util.LocalWeatherStrings.current
                 Column {
                     Text(
                         text = strings.offlineBanner,
@@ -85,7 +88,7 @@ fun OfflineBanner(
             ) {
                 Icon(
                     imageVector = Icons.Default.Refresh,
-                    contentDescription = "Retry Sync",
+                    contentDescription = strings.retrySync,
                     tint = WeatherPrimary,
                     modifier = Modifier.size(18.dp)
                 )
@@ -104,6 +107,7 @@ fun WeatherErrorView(
     modifier: Modifier = Modifier,
     onSearchAlternative: (() -> Unit)? = null
 ) {
+    val strings = LocalWeatherStrings.current
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -113,13 +117,13 @@ fun WeatherErrorView(
     ) {
         Icon(
             imageVector = Icons.Default.Warning,
-            contentDescription = "Error",
+            contentDescription = strings.error,
             tint = WeatherError,
             modifier = Modifier.size(56.dp)
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Unable to Load Weather",
+            text = strings.unableToLoadWeather,
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onSurface
         )
@@ -140,11 +144,11 @@ fun WeatherErrorView(
             ) {
                 Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("Retry", color = MaterialTheme.colorScheme.onPrimary)
+                Text(strings.retry, color = MaterialTheme.colorScheme.onPrimary)
             }
             if (onSearchAlternative != null) {
                 OutlinedButton(onClick = onSearchAlternative) {
-                    Text("Search Location")
+                    Text(strings.searchLocation)
                 }
             }
         }
@@ -155,19 +159,21 @@ fun WeatherErrorView(
 @Composable
 private fun ErrorComponentsPreview() {
     WeatherNowTheme(darkTheme = true) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            OfflineBanner(
-                lastUpdatedText = "Last updated 12 minutes ago",
-                onRetry = {}
-            )
-            WeatherErrorView(
-                errorMessage = "Network connection timed out. Please check your internet connection.",
-                onRetry = {},
-                onSearchAlternative = {}
-            )
+        ProvideWeatherLanguage(AppLanguage.VIETNAMESE) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                OfflineBanner(
+                    lastUpdatedText = "Last updated 12 minutes ago",
+                    onRetry = {}
+                )
+                WeatherErrorView(
+                    errorMessage = "Network connection timed out. Please check your internet connection.",
+                    onRetry = {},
+                    onSearchAlternative = {}
+                )
+            }
         }
     }
 }

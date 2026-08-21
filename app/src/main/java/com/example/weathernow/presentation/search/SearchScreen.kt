@@ -68,6 +68,7 @@ import com.example.weathernow.presentation.components.WeatherErrorView
 import com.example.weathernow.presentation.components.WeatherLoadingView
 import com.example.weathernow.presentation.util.LocalWeatherStrings
 import com.example.weathernow.presentation.util.ProvideWeatherLanguage
+import com.example.weathernow.presentation.util.getDisplayName
 import com.example.weathernow.theme.WeatherNowTheme
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -84,13 +85,20 @@ sealed interface SearchUiEvent {
     data class DeviceLocationFound(val location: WeatherLocation) : SearchUiEvent
 }
 
+sealed interface SearchError {
+    data object PermissionRequired : SearchError
+    data object LocationUnavailable : SearchError
+    data object GenericLocationFailure : SearchError
+    data object GenericSearchFailure : SearchError
+}
+
 data class SearchUiModel(
     val query: String = "",
     val searchResults: List<WeatherLocation> = emptyList(),
     val recentSearches: List<WeatherLocation> = emptyList(),
     val isSearching: Boolean = false,
     val isLocating: Boolean = false,
-    val errorMessage: String? = null
+    val error: SearchError? = null
 )
 
 class SearchViewModel(
@@ -122,27 +130,27 @@ class SearchViewModel(
             _uiState.value = _uiState.value.copy(
                 searchResults = emptyList(),
                 isSearching = false,
-                errorMessage = null
+                error = null
             )
             return
         }
 
         searchJob = viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isSearching = true, errorMessage = null)
+            _uiState.value = _uiState.value.copy(isSearching = true, error = null)
             delay(350)
             when (val result = locationRepository.searchLocations(newQuery)) {
                 is com.example.weathernow.core.common.Resource.Success -> {
                     _uiState.value = _uiState.value.copy(
                         searchResults = result.data,
                         isSearching = false,
-                        errorMessage = null
+                        error = null
                     )
                 }
                 is com.example.weathernow.core.common.Resource.Error -> {
                     _uiState.value = _uiState.value.copy(
                         searchResults = emptyList(),
                         isSearching = false,
-                        errorMessage = result.message
+                        error = SearchError.GenericSearchFailure
                     )
                 }
                 is com.example.weathernow.core.common.Resource.Loading -> {}
@@ -199,7 +207,7 @@ class SearchViewModel(
 
         locateJob?.cancel()
         locateJob = viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLocating = true, errorMessage = null)
+            _uiState.value = _uiState.value.copy(isLocating = true, error = null)
             try {
                 when (val result = locationRepository.getCurrentDeviceLocation()) {
                     is com.example.weathernow.core.common.Resource.Success -> {
@@ -210,19 +218,19 @@ class SearchViewModel(
                         } catch (e: Exception) {
                             // Non-fatal: do not block navigation or leave UI stuck if saving recent fails
                         }
-                        _uiState.value = _uiState.value.copy(isLocating = false)
+                        _uiState.value = _uiState.value.copy(isLocating = false, error = null)
                         _events.tryEmit(SearchUiEvent.DeviceLocationFound(result.data))
                     }
                     is com.example.weathernow.core.common.Resource.Error -> {
                         _uiState.value = _uiState.value.copy(
                             isLocating = false,
-                            errorMessage = result.message
+                            error = SearchError.LocationUnavailable
                         )
                     }
                     is com.example.weathernow.core.common.Resource.Loading -> {
                         _uiState.value = _uiState.value.copy(
                             isLocating = false,
-                            errorMessage = "Unexpected loading state while obtaining device location"
+                            error = SearchError.GenericLocationFailure
                         )
                     }
                 }
@@ -231,7 +239,7 @@ class SearchViewModel(
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLocating = false,
-                    errorMessage = e.message ?: "Failed to get device location"
+                    error = SearchError.GenericLocationFailure
                 )
             }
         }
@@ -240,7 +248,7 @@ class SearchViewModel(
     fun onLocationPermissionDenied() {
         _uiState.value = _uiState.value.copy(
             isLocating = false,
-            errorMessage = "Location permission is required to use this feature"
+            error = SearchError.PermissionRequired
         )
     }
 }
@@ -410,7 +418,7 @@ fun SearchContent(
                         enabled = !content.isLocating,
                         label = {
                             Text(
-                                if (content.isLocating) "Locating…" else strings.useMyLocation,
+                                if (content.isLocating) strings.locating else strings.useMyLocation,
                                 color = MaterialTheme.colorScheme.primary
                             )
                         },
@@ -453,13 +461,27 @@ fun SearchContent(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            val resolvedErrorMessage = when (content.error) {
+                SearchError.PermissionRequired -> strings.locationPermissionRequired
+                SearchError.LocationUnavailable -> strings.locationUnavailable
+                SearchError.GenericLocationFailure -> strings.genericLocationFailure
+                SearchError.GenericSearchFailure -> strings.genericSearchFailure
+                null -> null
+            }
+
             // 3. Main Body: Results or Recent Searches
             if (content.isSearching) {
-                WeatherLoadingView(message = "Searching locations...")
-            } else if (content.errorMessage != null) {
+                WeatherLoadingView(message = strings.searchLocation)
+            } else if (resolvedErrorMessage != null) {
                 WeatherErrorView(
-                    errorMessage = content.errorMessage,
-                    onRetry = { /* Retry query */ }
+                    errorMessage = resolvedErrorMessage,
+                    onRetry = {
+                        if (content.error == SearchError.PermissionRequired || content.error == SearchError.LocationUnavailable || content.error == SearchError.GenericLocationFailure) {
+                            onUseMyLocation()
+                        } else {
+                            onQueryChange(content.query)
+                        }
+                    }
                 )
             } else if (content.query.isEmpty()) {
                 // Recent Searches Section (Stitch Component)
@@ -506,7 +528,7 @@ fun SearchContent(
                                         Spacer(modifier = Modifier.width(12.dp))
                                         Column {
                                             Text(
-                                                text = recent.name,
+                                                text = recent.getDisplayName(strings),
                                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
                                                 color = MaterialTheme.colorScheme.onSurface
                                             )
@@ -575,7 +597,7 @@ fun SearchContent(
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column {
                                         Text(
-                                            text = result.name,
+                                            text = result.getDisplayName(strings),
                                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                             color = MaterialTheme.colorScheme.onSurface
                                         )

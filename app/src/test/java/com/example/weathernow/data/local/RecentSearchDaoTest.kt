@@ -57,4 +57,48 @@ class RecentSearchDaoTest {
         dao.clearRecentSearches()
         assertEquals(0, dao.getSearchCount())
     }
+
+    @Test
+    fun deleteDeviceLocationSearches_removesOnlySemanticDeviceRows() = runTest {
+        val legacyRow = RecentSearchEntity(
+            id = "20.39_106.46",
+            name = "Current location",
+            country = null,
+            adminArea = null,
+            latitude = 20.39,
+            longitude = 106.46,
+            searchedAt = 1000L
+        )
+        val deviceRow = RecentSearchEntity(
+            id = "device_20.3904_106.4642",
+            name = "Current location",
+            country = null,
+            adminArea = null,
+            latitude = 20.3904,
+            longitude = 106.4642,
+            searchedAt = 2000L
+        )
+        val tokyoRow = RecentSearchEntity(
+            id = "tokyo",
+            name = "Tokyo",
+            country = "Japan",
+            adminArea = "Tokyo",
+            latitude = 35.6762,
+            longitude = 139.6503,
+            searchedAt = 3000L
+        )
+
+        dao.insertSearch(legacyRow)
+        dao.insertSearch(deviceRow)
+        dao.insertSearch(tokyoRow)
+        assertEquals(3, dao.getSearchCount())
+
+        val deletedCount = dao.deleteDeviceLocationSearches()
+        assertEquals(2, deletedCount)
+
+        val remaining = dao.observeRecentSearches(10).first()
+        assertEquals(1, remaining.size)
+        assertEquals("tokyo", remaining[0].id)
+        assertEquals("Tokyo", remaining[0].name)
+    }
 }

@@ -137,7 +137,7 @@ class SearchViewModelTest {
     }
 
     @Test
-    fun testSearchError_SetsErrorMessage() = runTest(testDispatcher) {
+    fun testSearchError_SetsSemanticGenericSearchFailure() = runTest(testDispatcher) {
         val viewModel = SearchViewModel(fakeLocationRepo, fakeWeatherRepo)
         advanceUntilIdle()
 
@@ -146,7 +146,7 @@ class SearchViewModelTest {
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.isSearching)
-        assertEquals("Search network error", viewModel.uiState.value.errorMessage)
+        assertEquals(com.example.weathernow.presentation.search.SearchError.GenericSearchFailure, viewModel.uiState.value.error)
     }
 
     // --- Device location tests ---
@@ -183,6 +183,7 @@ class SearchViewModelTest {
         assertEquals(106.6297, found.location.longitude, 0.0001)
         assertEquals("Current location", found.location.name)
         assertFalse(viewModel.uiState.value.isLocating)
+        assertEquals(null, viewModel.uiState.value.error)
     }
 
     @Test
@@ -210,7 +211,7 @@ class SearchViewModelTest {
     }
 
     @Test
-    fun useCurrentLocation_providerError_setsErrorMessage() = runTest(testDispatcher) {
+    fun useCurrentLocation_providerError_setsSemanticLocationUnavailableError() = runTest(testDispatcher) {
         deviceLocationResult = Resource.Error("Unable to obtain device location")
 
         val viewModel = SearchViewModel(fakeLocationRepo, fakeWeatherRepo)
@@ -220,20 +221,18 @@ class SearchViewModelTest {
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.isLocating)
-        assertNotNull(viewModel.uiState.value.errorMessage)
-        assertTrue(viewModel.uiState.value.errorMessage!!.contains("Unable to obtain"))
+        assertEquals(com.example.weathernow.presentation.search.SearchError.LocationUnavailable, viewModel.uiState.value.error)
     }
 
     @Test
-    fun onLocationPermissionDenied_setsActionableError() = runTest(testDispatcher) {
+    fun onLocationPermissionDenied_setsSemanticPermissionRequiredError() = runTest(testDispatcher) {
         val viewModel = SearchViewModel(fakeLocationRepo, fakeWeatherRepo)
         advanceUntilIdle()
 
         viewModel.onLocationPermissionDenied()
         advanceUntilIdle()
 
-        assertNotNull(viewModel.uiState.value.errorMessage)
-        assertTrue(viewModel.uiState.value.errorMessage!!.contains("permission"))
+        assertEquals(com.example.weathernow.presentation.search.SearchError.PermissionRequired, viewModel.uiState.value.error)
     }
 
     @Test
@@ -270,7 +269,7 @@ class SearchViewModelTest {
     }
 
     @Test
-    fun useCurrentLocation_unexpectedLoading_setsTruthfulErrorAndResetsIsLocating() = runTest(testDispatcher) {
+    fun useCurrentLocation_unexpectedLoading_setsSemanticGenericLocationFailureAndResetsIsLocating() = runTest(testDispatcher) {
         deviceLocationResult = Resource.Loading
 
         val viewModel = SearchViewModel(fakeLocationRepo, fakeWeatherRepo)
@@ -280,8 +279,7 @@ class SearchViewModelTest {
         advanceUntilIdle()
 
         assertFalse("isLocating must be false", viewModel.uiState.value.isLocating)
-        assertNotNull(viewModel.uiState.value.errorMessage)
-        assertTrue(viewModel.uiState.value.errorMessage!!.contains("Unexpected loading"))
+        assertEquals(com.example.weathernow.presentation.search.SearchError.GenericLocationFailure, viewModel.uiState.value.error)
     }
 
     @Test
@@ -320,10 +318,11 @@ class SearchViewModelTest {
 
         assertFalse("isLocating must be false even when saveRecentSearch fails", viewModel.uiState.value.isLocating)
         assertTrue("Event must still be emitted", emittedEvent is SearchUiEvent.DeviceLocationFound)
+        assertEquals(null, viewModel.uiState.value.error)
     }
 
     @Test
-    fun useCurrentLocation_unexpectedException_setsErrorMessageAndResetsIsLocating() = runTest(testDispatcher) {
+    fun useCurrentLocation_unexpectedException_setsSemanticGenericLocationFailureAndResetsIsLocating() = runTest(testDispatcher) {
         val throwingRepo = object : LocationRepository {
             override suspend fun searchLocations(query: String) = fakeLocationRepo.searchLocations(query)
             override suspend fun getCurrentDeviceLocation(): Resource<WeatherLocation> {
@@ -344,7 +343,6 @@ class SearchViewModelTest {
         advanceUntilIdle()
 
         assertFalse("isLocating must be false", viewModel.uiState.value.isLocating)
-        assertNotNull(viewModel.uiState.value.errorMessage)
-        assertTrue(viewModel.uiState.value.errorMessage!!.contains("Unexpected hardware failure"))
+        assertEquals(com.example.weathernow.presentation.search.SearchError.GenericLocationFailure, viewModel.uiState.value.error)
     }
 }

@@ -67,6 +67,8 @@ import com.example.weathernow.presentation.components.WeatherLoadingView
 import com.example.weathernow.presentation.util.LocalAppLanguage
 import com.example.weathernow.presentation.util.LocalWeatherStrings
 import com.example.weathernow.presentation.util.ProvideWeatherLanguage
+import com.example.weathernow.presentation.util.getDisplayName
+import com.example.weathernow.presentation.util.getLocalizedLocationName
 import com.example.weathernow.theme.TemperatureRangeGradient
 import com.example.weathernow.theme.WeatherNowTheme
 import com.example.weathernow.theme.WeatherPrimary
@@ -285,11 +287,12 @@ fun HomeContent(
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Column {
+                                    val locDisplayName = uiState.location.getDisplayName(strings)
                                     val country = uiState.location.country
-                                    val locationTitle = if (country.isNullOrBlank() || uiState.location.name.contains(country)) {
-                                        uiState.location.name
+                                    val locationTitle = if (country.isNullOrBlank() || locDisplayName.contains(country) || uiState.location.id?.startsWith("device_") == true || uiState.location.name.equals("Current location", ignoreCase = true)) {
+                                        locDisplayName
                                     } else {
-                                        "${uiState.location.name}, $country"
+                                        "$locDisplayName, $country"
                                     }
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
@@ -795,6 +798,7 @@ fun LocationSwitcherBottomSheet(
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val strings = LocalWeatherStrings.current
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -906,7 +910,7 @@ fun LocationSwitcherBottomSheet(
                                 Spacer(modifier = Modifier.width(14.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = loc.name,
+                                        text = loc.getDisplayName(strings),
                                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                                         color = MaterialTheme.colorScheme.onSurface
                                     )

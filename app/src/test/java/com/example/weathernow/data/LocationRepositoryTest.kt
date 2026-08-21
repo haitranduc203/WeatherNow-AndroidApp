@@ -9,10 +9,14 @@ import com.example.weathernow.data.remote.dto.OpenMeteoForecastDto
 import com.example.weathernow.data.remote.dto.OpenMeteoGeocodingDto
 import com.example.weathernow.data.remote.dto.OpenMeteoLocationDto
 import com.example.weathernow.data.repository.LocationRepositoryImpl
+import com.example.weathernow.domain.model.WeatherLocation
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 
 class LocationRepositoryTest {
@@ -155,5 +159,162 @@ class LocationRepositoryTest {
 
         val result = repo.getCurrentDeviceLocation()
         assertTrue("Expected Resource.Error, got $result", result is Resource.Error)
+    }
+
+    @Test
+    fun saveRecentSearch_preservesStableDeviceId() = runTest {
+        var insertedEntity: com.example.weathernow.data.local.db.entity.RecentSearchEntity? = null
+        var deleteDeviceSearchesCallCount = 0
+        val mockRecentDao = object : com.example.weathernow.data.local.db.dao.RecentSearchDao {
+            override fun observeRecentSearches(limit: Int) = kotlinx.coroutines.flow.flowOf(emptyList<com.example.weathernow.data.local.db.entity.RecentSearchEntity>())
+            override suspend fun insertSearch(entity: com.example.weathernow.data.local.db.entity.RecentSearchEntity): Long {
+                insertedEntity = entity
+                return 1L
+            }
+            override suspend fun deleteSearchById(id: String): Int = 1
+            override suspend fun deleteDeviceLocationSearches(): Int {
+                deleteDeviceSearchesCallCount++
+                return 1
+            }
+            override suspend fun clearRecentSearches(): Int = 0
+            override suspend fun getSearchCount(): Int = 1
+        }
+
+        val repo = LocationRepositoryImpl(
+            remoteDataSource = mockRemoteDataSource,
+            recentSearchDao = mockRecentDao
+        )
+
+        val deviceLoc = WeatherLocation(
+            id = "device_10.8231_106.6297",
+            name = "Current location",
+            country = null,
+            latitude = 10.8231,
+            longitude = 106.6297
+        )
+        repo.saveRecentSearch(deviceLoc)
+
+        assertNotNull("Recent search entity must be inserted", insertedEntity)
+        assertEquals("device_10.8231_106.6297", insertedEntity!!.id)
+        assertEquals("Cleanup must occur for device location", 1, deleteDeviceSearchesCallCount)
+
+        // Verify ordinary locations do not trigger device-row cleanup
+        val normalLoc = WeatherLocation(
+            id = "tokyo",
+            name = "Tokyo",
+            country = "Japan",
+            latitude = 35.6762,
+            longitude = 139.6503
+        )
+        repo.saveRecentSearch(normalLoc)
+        assertEquals("Cleanup must NOT occur for normal location", 1, deleteDeviceSearchesCallCount)
+    }
+
+    @Test
+    fun saveRecentSearch_duplicateDeviceLocationCleanup_keepsOnlyLatestDeviceLocation() = runTest {
+        val storedEntities = mutableListOf<com.example.weathernow.data.local.db.entity.RecentSearchEntity>()
+        val entitiesFlow = kotlinx.coroutines.flow.MutableStateFlow<List<com.example.weathernow.data.local.db.entity.RecentSearchEntity>>(emptyList())
+
+        fun syncFlow() {
+            entitiesFlow.value = storedEntities.sortedByDescending { it.searchedAt }
+        }
+
+        val fakeRecentDao = object : com.example.weathernow.data.local.db.dao.RecentSearchDao {
+            override fun observeRecentSearches(limit: Int) = entitiesFlow
+            override suspend fun insertSearch(entity: com.example.weathernow.data.local.db.entity.RecentSearchEntity): Long {
+                storedEntities.removeAll { it.id == entity.id }
+                storedEntities.add(entity)
+                syncFlow()
+                return 1L
+            }
+            override suspend fun deleteSearchById(id: String): Int {
+                val removed = storedEntities.removeAll { it.id == id }
+                syncFlow()
+                return if (removed) 1 else 0
+            }
+            override suspend fun deleteDeviceLocationSearches(): Int {
+                val initial = storedEntities.size
+                storedEntities.removeAll {
+                    it.id.startsWith("device_") || (it.name.equals("Current location", ignoreCase = true) && it.country == null)
+                }
+                val removed = initial - storedEntities.size
+                syncFlow()
+                return removed
+            }
+            override suspend fun clearRecentSearches(): Int {
+                val size = storedEntities.size
+                storedEntities.clear()
+                syncFlow()
+                return size
+            }
+            override suspend fun getSearchCount(): Int = storedEntities.size
+        }
+
+        // Start with legacy current-location row and a normal row (Tokyo)
+        fakeRecentDao.insertSearch(
+            com.example.weathernow.data.local.db.entity.RecentSearchEntity(
+                id = "20.39_106.46",
+                name = "Current location",
+                country = null,
+                adminArea = null,
+                latitude = 20.39,
+                longitude = 106.46,
+                searchedAt = 1000L
+            )
+        )
+        fakeRecentDao.insertSearch(
+            com.example.weathernow.data.local.db.entity.RecentSearchEntity(
+                id = "tokyo",
+                name = "Tokyo",
+                country = "Japan",
+                adminArea = "Tokyo",
+                latitude = 35.6762,
+                longitude = 139.6503,
+                searchedAt = 2000L
+            )
+        )
+
+        val repo = LocationRepositoryImpl(
+            remoteDataSource = mockRemoteDataSource,
+            recentSearchDao = fakeRecentDao
+        )
+
+        // Save device location A
+        val locationA = WeatherLocation(
+            id = "device_20.3904_106.4642",
+            name = "Current location",
+            country = null,
+            latitude = 20.3904,
+            longitude = 106.4642
+        )
+        repo.saveRecentSearch(locationA)
+
+        // Save device location B with slightly different coordinates
+        val locationB = WeatherLocation(
+            id = "device_20.3910_106.4650",
+            name = "Current location",
+            country = null,
+            latitude = 20.3910,
+            longitude = 106.4650
+        )
+        repo.saveRecentSearch(locationB)
+
+        val recents = repo.observeRecentSearches(10).first()
+
+        // Assert exactly one semantic device location exists
+        val deviceEntries = recents.filter {
+            it.id?.startsWith("device_") == true || (it.name.equals("Current location", ignoreCase = true) && it.country == null)
+        }
+        assertEquals("Must contain exactly one semantic device-location entry", 1, deviceEntries.size)
+
+        val activeDevice = deviceEntries.first()
+        assertEquals("device_20.3910_106.4650", activeDevice.id)
+        assertEquals(20.3910, activeDevice.latitude, 0.0001)
+        assertEquals(106.4650, activeDevice.longitude, 0.0001)
+
+        // Assert normal rows remain
+        val tokyoEntry = recents.find { it.id == "tokyo" }
+        assertNotNull("Normal searches (Tokyo) must remain", tokyoEntry)
+        assertEquals("Tokyo", tokyoEntry!!.name)
     }
 }
