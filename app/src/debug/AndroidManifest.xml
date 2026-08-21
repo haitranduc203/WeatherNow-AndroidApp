@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <receiver
+            android:name=".core.worker.WeatherTestNotificationReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.example.weathernow.TEST_NOTIFICATION" />
+                <action android:name="com.example.weathernow.TEST_SYNC" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>
