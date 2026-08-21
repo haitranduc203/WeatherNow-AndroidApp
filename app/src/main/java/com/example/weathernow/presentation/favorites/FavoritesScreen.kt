@@ -62,6 +62,8 @@ import com.example.weathernow.domain.model.CurrentWeather
 import com.example.weathernow.domain.model.DailyForecast
 import com.example.weathernow.domain.model.WeatherCondition
 import com.example.weathernow.domain.model.WeatherLocation
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Refresh
 import com.example.weathernow.presentation.components.GlassCard
 import com.example.weathernow.presentation.components.WeatherConditionIcon
 import com.example.weathernow.presentation.components.WeatherEmptyView
@@ -71,12 +73,20 @@ import com.example.weathernow.presentation.util.LocalWeatherStrings
 import com.example.weathernow.presentation.util.ProvideWeatherLanguage
 import com.example.weathernow.presentation.util.getDisplayName
 import com.example.weathernow.theme.WeatherNowTheme
+import com.example.weathernow.theme.WeatherWarning
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 data class FavoriteItemUiModel(
     val location: WeatherLocation,
@@ -91,108 +101,139 @@ sealed interface FavoritesUiState {
     data object Loading : FavoritesUiState
     data class Success(
         val currentLocation: FavoriteItemUiModel? = null,
-        val favoritesList: List<FavoriteItemUiModel> = emptyList()
+        val favoritesList: List<FavoriteItemUiModel> = emptyList(),
+        val hasPartialError: Boolean = false
     ) : FavoritesUiState
-    data class Error(val message: String) : FavoritesUiState
+    data object Error : FavoritesUiState
 }
 
+private fun locationKey(loc: WeatherLocation): String =
+    String.format(Locale.US, "%.4f_%.4f", loc.latitude, loc.longitude)
+
+@OptIn(ExperimentalCoroutinesApi::class)
 class FavoritesViewModel(
     private val weatherRepository: com.example.weathernow.domain.repository.WeatherRepository = com.example.weathernow.WeatherNowApp.instance?.appContainer?.weatherRepository ?: com.example.weathernow.data.repository.WeatherRepositoryImpl(),
     private val activeLocationManager: ActiveLocationManager = ActiveLocationManager
 ) : ViewModel() {
+
     private val _uiState = MutableStateFlow<FavoritesUiState>(FavoritesUiState.Loading)
     val uiState: StateFlow<FavoritesUiState> = _uiState.asStateFlow()
+
+    private var loadJob: kotlinx.coroutines.Job? = null
 
     init {
         loadFavorites()
     }
 
     fun loadFavorites() {
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            _uiState.value = FavoritesUiState.Loading
             combine(
                 activeLocationManager.activeLocation,
                 weatherRepository.observeFavoriteLocations()
-            ) { activeLoc, favLocations ->
-                // 1. Build current active location UI model instantly from active location
-                val tz = try {
-                    if (!activeLoc.timezone.isNullOrBlank()) java.time.ZoneId.of(activeLoc.timezone) else java.time.ZoneId.systemDefault()
-                } catch (_: Exception) {
-                    java.time.ZoneId.systemDefault()
-                }
-                val localTimeFormatted = java.time.ZonedDateTime.now(tz).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
+            ) { activeLoc, favList ->
+                activeLoc to favList
+            }.flatMapLatest { (activeLoc, favList) ->
+                val activeKey = locationKey(activeLoc)
+                val distinctFavList = favList.distinctBy { locationKey(it) }
+                    .filterNot { locationKey(it) == activeKey }
+                val distinctLocations = listOf(activeLoc) + distinctFavList
 
-                val currentActiveModel = FavoriteItemUiModel(
-                    location = activeLoc,
-                    temperature = when (activeLoc.name) {
-                        "Tokyo" -> 19.0
-                        "Paris" -> 22.0
-                        "New York" -> 16.0
-                        "Sydney" -> 24.0
-                        "Hà Nội", "Thái Bình", "Hưng Yên" -> 28.0
-                        else -> 26.0
-                    },
-                    condition = when (activeLoc.name) {
-                        "Paris" -> WeatherCondition.RAIN
-                        "New York" -> WeatherCondition.CLOUDY
-                        else -> WeatherCondition.CLEAR
-                    },
-                    localTime = localTimeFormatted,
-                    minTemp = when (activeLoc.name) {
-                        "Paris" -> 16.0
-                        "Tokyo" -> 14.0
-                        "New York" -> 12.0
-                        else -> 24.0
-                    },
-                    maxTemp = when (activeLoc.name) {
-                        "Paris" -> 26.0
-                        "Tokyo" -> 24.0
-                        "New York" -> 22.0
-                        else -> 34.0
+                if (distinctLocations.isEmpty()) {
+                    flowOf(FavoritesUiState.Success(currentLocation = null, favoritesList = emptyList(), hasPartialError = false))
+                } else {
+                    val locationFlows: List<Flow<Pair<String, Pair<Resource<CurrentWeather>, Resource<List<DailyForecast>>>>>> =
+                        distinctLocations.map { loc ->
+                            val key = locationKey(loc)
+                            combine(
+                                weatherRepository.observeCurrentWeather(loc.latitude, loc.longitude),
+                                weatherRepository.observeDailyForecast(loc.latitude, loc.longitude)
+                            ) { currentRes, dailyRes ->
+                                key to (currentRes to dailyRes)
+                            }
+                        }
+
+                    combine(locationFlows) { resultsArray ->
+                        val weatherMap = resultsArray.toMap()
+
+                        fun evaluateLocation(loc: WeatherLocation): Triple<FavoriteItemUiModel?, Boolean, Boolean> {
+                            val key = locationKey(loc)
+                            val pair = weatherMap[key] ?: return Triple(null, false, true)
+                            val currentRes = pair.first
+                            val dailyRes = pair.second
+
+                            if (currentRes is Resource.Loading || dailyRes is Resource.Loading) {
+                                if (currentRes is Resource.Error || dailyRes is Resource.Error) {
+                                    return Triple(null, true, false)
+                                }
+                                return Triple(null, false, true)
+                            }
+
+                            if (currentRes is Resource.Error || dailyRes is Resource.Error) {
+                                return Triple(null, true, false)
+                            }
+
+                            if (currentRes is Resource.Success && dailyRes is Resource.Success) {
+                                val current = currentRes.data
+                                val dailyList = dailyRes.data
+                                val firstDaily = dailyList.firstOrNull()
+                                if (firstDaily == null) {
+                                    return Triple(null, true, false)
+                                }
+                                val minTemp = firstDaily.minTemperatureCelsius
+                                val maxTemp = firstDaily.maxTemperatureCelsius
+                                val tz = try {
+                                    if (!loc.timezone.isNullOrBlank()) ZoneId.of(loc.timezone) else ZoneId.systemDefault()
+                                } catch (_: Exception) {
+                                    ZoneId.systemDefault()
+                                }
+                                val locTime = ZonedDateTime.now(tz).format(DateTimeFormatter.ofPattern("HH:mm"))
+
+                                val model = FavoriteItemUiModel(
+                                    location = loc,
+                                    temperature = current.temperatureCelsius,
+                                    condition = current.condition,
+                                    localTime = locTime,
+                                    minTemp = minTemp,
+                                    maxTemp = maxTemp
+                                )
+                                return Triple(model, false, false)
+                            }
+
+                            return Triple(null, false, true)
+                        }
+
+                        val (activeModel, activeError, _) = evaluateLocation(activeLoc)
+                        val favEvaluations = distinctFavList.map { evaluateLocation(it) }
+                        val favModels = favEvaluations.mapNotNull { it.first }
+                        val favErrors = favEvaluations.count { it.second }
+
+                        val totalErrors = (if (activeError) 1 else 0) + favErrors
+                        val totalLocations = 1 + distinctFavList.size
+                        val totalSuccess = (if (activeModel != null) 1 else 0) + favModels.size
+
+                        if (totalErrors == totalLocations && totalSuccess == 0) {
+                            FavoritesUiState.Error
+                        } else if (totalSuccess > 0) {
+                            FavoritesUiState.Success(
+                                currentLocation = activeModel,
+                                favoritesList = favModels,
+                                hasPartialError = totalErrors > 0
+                            )
+                        } else {
+                            FavoritesUiState.Loading
+                        }
                     }
-                )
-
-                // 2. Build favorite list models
-                val items = favLocations.map { loc ->
-                    val locTz = try {
-                        if (!loc.timezone.isNullOrBlank()) java.time.ZoneId.of(loc.timezone) else java.time.ZoneId.systemDefault()
-                    } catch (_: Exception) {
-                        java.time.ZoneId.systemDefault()
-                    }
-                    val locTime = java.time.ZonedDateTime.now(locTz).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
-
-                    FavoriteItemUiModel(
-                        location = loc,
-                        temperature = when (loc.name) {
-                            "Tokyo" -> 19.0
-                            "Paris" -> 22.0
-                            "New York" -> 16.0
-                            "Sydney" -> 24.0
-                            "Hà Nội" -> 28.0
-                            "Thái Bình" -> 28.0
-                            "Hưng Yên" -> 28.0
-                            else -> 25.0
-                        },
-                        condition = when (loc.name) {
-                            "Tokyo" -> WeatherCondition.CLEAR
-                            "Paris" -> WeatherCondition.RAIN
-                            "New York" -> WeatherCondition.CLOUDY
-                            "Thái Bình", "Hưng Yên", "Hà Nội" -> WeatherCondition.CLEAR
-                            else -> WeatherCondition.PARTLY_CLOUDY
-                        },
-                        localTime = locTime,
-                        minTemp = 18.0,
-                        maxTemp = 28.0
-                    )
                 }
-
-                FavoritesUiState.Success(
-                    currentLocation = currentActiveModel,
-                    favoritesList = items
-                )
             }.collect { newState ->
                 _uiState.value = newState
             }
         }
+    }
+
+    fun retry() {
+        loadFavorites()
     }
 
     fun addFavorite(location: WeatherLocation) {
@@ -228,6 +269,7 @@ fun FavoritesScreen(
         onRemoveFavorite = viewModel::removeFavorite,
         onNavigateToAdd = { showAddSheet = true },
         onNavigateBack = onNavigateBack,
+        onRetry = viewModel::loadFavorites,
         modifier = modifier
     )
 
@@ -253,6 +295,7 @@ fun FavoritesContent(
     onRemoveFavorite: (String) -> Unit,
     onNavigateToAdd: () -> Unit,
     onNavigateBack: () -> Unit,
+    onRetry: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val strings = LocalWeatherStrings.current
@@ -307,6 +350,15 @@ fun FavoritesContent(
                             verticalArrangement = Arrangement.spacedBy(14.dp),
                             contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp)
                         ) {
+                            if (uiState.hasPartialError) {
+                                item {
+                                    FavoritesPartialErrorBanner(
+                                        message = strings.favoritesPartialFailure,
+                                        onRetry = onRetry
+                                    )
+                                }
+                            }
+
                             // 1. Current Pinned Location Card (Stitch Component)
                             uiState.currentLocation?.let { current ->
                                 item {
@@ -384,12 +436,66 @@ fun FavoritesContent(
                 is FavoritesUiState.Error -> {
                     WeatherEmptyView(
                         title = strings.unableToLoadWeather,
-                        subtitle = uiState.message,
+                        subtitle = strings.favoritesLoadFailure,
                         actionText = strings.retry,
-                        onAction = { /* reload */ },
+                        onAction = onRetry,
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Favorites partial error banner with localized message and retry action.
+ */
+@Composable
+private fun FavoritesPartialErrorBanner(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val strings = LocalWeatherStrings.current
+    GlassCard(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        backgroundColor = WeatherWarning.copy(alpha = 0.12f),
+        borderColor = WeatherWarning.copy(alpha = 0.3f),
+        contentPadding = 12.dp
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CloudOff,
+                    contentDescription = strings.error,
+                    tint = WeatherWarning,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            IconButton(
+                onClick = onRetry,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = strings.retry,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
     }

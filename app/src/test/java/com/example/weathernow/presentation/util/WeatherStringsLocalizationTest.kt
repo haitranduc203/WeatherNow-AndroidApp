@@ -19,6 +19,8 @@ class WeatherStringsLocalizationTest {
         assertEquals("Tìm kiếm địa điểm", VietnameseStrings.searchLocation)
         assertEquals("Thử đồng bộ lại", VietnameseStrings.retrySync)
         assertEquals("Hướng gió: 299° Đông", VietnameseStrings.windDirectionLabel(299))
+        assertEquals("Không thể cập nhật một số địa điểm. Đang hiển thị dữ liệu có sẵn.", VietnameseStrings.favoritesPartialFailure)
+        assertEquals("Không thể tải thời tiết cho các địa điểm đã lưu. Vui lòng thử lại.", VietnameseStrings.favoritesLoadFailure)
     }
 
     @Test
@@ -35,5 +37,7 @@ class WeatherStringsLocalizationTest {
         assertEquals("Search Location", EnglishStrings.searchLocation)
         assertEquals("Retry Sync", EnglishStrings.retrySync)
         assertEquals("Direction: 299° East", EnglishStrings.windDirectionLabel(299))
+        assertEquals("Some locations could not be updated. Showing available weather.", EnglishStrings.favoritesPartialFailure)
+        assertEquals("Weather for your saved locations is unavailable. Please try again.", EnglishStrings.favoritesLoadFailure)
     }
 }

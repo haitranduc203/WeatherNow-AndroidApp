@@ -262,7 +262,7 @@ class WeatherRepositoryImpl(
                 }.flowOn(Dispatchers.IO)
             )
         }
-    }.flowOn(Dispatchers.IO)
+    }
 
     override suspend fun addFavoriteLocation(location: WeatherLocation): Resource<Unit> = withContext(Dispatchers.IO) {
         val dao = favoriteLocationDao

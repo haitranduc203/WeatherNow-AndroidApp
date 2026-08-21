@@ -11,7 +11,9 @@ import com.example.weathernow.presentation.search.SearchViewModel
 import com.example.weathernow.presentation.settings.SettingsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -25,10 +27,11 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class BaselineViewModelTest {
 
-    private val testDispatcher = UnconfinedTestDispatcher()
+    private lateinit var testDispatcher: TestDispatcher
 
     @Before
     fun setUp() {
+        testDispatcher = StandardTestDispatcher()
         Dispatchers.setMain(testDispatcher)
     }
 
@@ -60,9 +63,9 @@ class BaselineViewModelTest {
     private fun createMockLocationRepo() = com.example.weathernow.data.repository.LocationRepositoryImpl(mockRemoteDataSource)
 
     @Test
-    fun homeViewModel_initialState_isSuccessWithWeatherData() = runTest {
+    fun homeViewModel_initialState_isSuccessWithWeatherData() = runTest(testDispatcher) {
         val viewModel = HomeViewModel(weatherRepository = createMockWeatherRepo())
-        testScheduler.advanceUntilIdle()
+        advanceUntilIdle()
         val state = viewModel.uiState.value
         assertTrue("Actual state was: $state", state is HomeUiState.Success)
         val success = state as HomeUiState.Success
@@ -73,8 +76,9 @@ class BaselineViewModelTest {
     }
 
     @Test
-    fun searchViewModel_queryUpdate_and_clearQuery() = runTest {
+    fun searchViewModel_queryUpdate_and_clearQuery() = runTest(testDispatcher) {
         val viewModel = SearchViewModel(locationRepository = createMockLocationRepo(), weatherRepository = createMockWeatherRepo())
+        advanceUntilIdle()
         assertEquals("", viewModel.uiState.value.query)
 
         viewModel.onQueryChange("Tokyo")
@@ -85,22 +89,25 @@ class BaselineViewModelTest {
     }
 
     @Test
-    fun favoritesViewModel_initialState_hasCurrentAndSavedCities() = runTest {
+    fun favoritesViewModel_initialState_hasCurrentAndSavedCities() = runTest(testDispatcher) {
         val viewModel = FavoritesViewModel(weatherRepository = createMockWeatherRepo())
+        advanceUntilIdle()
         val state = viewModel.uiState.value
-        assertTrue(state is FavoritesUiState.Success)
+        assertTrue("Actual state was: $state", state is FavoritesUiState.Success)
         val success = state as FavoritesUiState.Success
         assertNotNull(success.currentLocation)
         assertEquals("Hà Nội", success.currentLocation?.location?.name)
-        assertEquals(4, success.favoritesList.size)
+        assertEquals(3, success.favoritesList.size)
     }
 
     @Test
-    fun settingsViewModel_updateTheme_units_and_language() = runTest {
+    fun settingsViewModel_updateTheme_units_and_language() = runTest(testDispatcher) {
         val viewModel = SettingsViewModel()
+        advanceUntilIdle()
         viewModel.setTheme(AppTheme.DARK)
         viewModel.setLanguage(AppLanguage.VIETNAMESE)
         viewModel.setTemperatureUnit(TemperatureUnit.FAHRENHEIT)
+        advanceUntilIdle()
 
         val state = viewModel.uiState.value
         assertEquals(AppTheme.DARK, state.preferences.theme)
@@ -109,9 +116,11 @@ class BaselineViewModelTest {
     }
 
     @Test
-    fun settingsViewModel_clearCache_resetsCacheSize() = runTest {
+    fun settingsViewModel_clearCache_resetsCacheSize() = runTest(testDispatcher) {
         val viewModel = SettingsViewModel()
+        advanceUntilIdle()
         viewModel.clearOfflineCache()
+        advanceUntilIdle()
 
         val state = viewModel.uiState.value
         assertEquals("0 KB", state.cachedDataSize)

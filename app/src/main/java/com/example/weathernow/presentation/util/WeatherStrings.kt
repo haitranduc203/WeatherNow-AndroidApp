@@ -89,7 +89,9 @@ data class AppStringResources(
     val thermalComfort: String,
     val moderateProtection: String,
     val dewPointLabel: (Int) -> String,
-    val windDirectionLabel: (Int) -> String
+    val windDirectionLabel: (Int) -> String,
+    val favoritesPartialFailure: String,
+    val favoritesLoadFailure: String
 )
 
 val EnglishStrings = AppStringResources(
@@ -176,7 +178,9 @@ val EnglishStrings = AppStringResources(
     thermalComfort = "Normal thermal comfort",
     moderateProtection = "Moderate protection",
     dewPointLabel = { temp -> "Dew point: $temp°C" },
-    windDirectionLabel = { deg -> "Direction: $deg° East" }
+    windDirectionLabel = { deg -> "Direction: $deg° East" },
+    favoritesPartialFailure = "Some locations could not be updated. Showing available weather.",
+    favoritesLoadFailure = "Weather for your saved locations is unavailable. Please try again."
 )
 
 val VietnameseStrings = AppStringResources(
@@ -263,7 +267,9 @@ val VietnameseStrings = AppStringResources(
     thermalComfort = "Cảm giác nhiệt dễ chịu",
     moderateProtection = "Cần che chắn khi ra ngoài",
     dewPointLabel = { temp -> "Điểm sương: $temp°C" },
-    windDirectionLabel = { deg -> "Hướng gió: $deg° Đông" }
+    windDirectionLabel = { deg -> "Hướng gió: $deg° Đông" },
+    favoritesPartialFailure = "Không thể cập nhật một số địa điểm. Đang hiển thị dữ liệu có sẵn.",
+    favoritesLoadFailure = "Không thể tải thời tiết cho các địa điểm đã lưu. Vui lòng thử lại."
 )
 
 val LocalAppLanguage = compositionLocalOf { AppLanguage.VIETNAMESE }

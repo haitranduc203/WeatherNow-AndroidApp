@@ -201,4 +201,64 @@ class ComposeLocalizationRobolectricTest {
         composeTestRule.onNodeWithText("Vị trí hiện tại").assertExists()
         composeTestRule.onNodeWithText("Chi tiết & Xu hướng").assertExists()
     }
+
+    @Test
+    fun favoritesScreen_partialError_vietnamese_rendersLocalizedMessage() {
+        val favItem = com.example.weathernow.presentation.favorites.FavoriteItemUiModel(
+            location = WeatherLocation("loc_tokyo", "Tokyo", "Nhật Bản", "Tokyo", 35.6762, 139.6503),
+            temperature = 22.0,
+            condition = com.example.weathernow.domain.model.WeatherCondition.CLEAR,
+            localTime = "14:00",
+            minTemp = 18.0,
+            maxTemp = 26.0
+        )
+        val state = com.example.weathernow.presentation.favorites.FavoritesUiState.Success(
+            favoritesList = listOf(favItem),
+            hasPartialError = true
+        )
+
+        composeTestRule.setContent {
+            WeatherNowTheme {
+                ProvideWeatherLanguage(AppLanguage.VIETNAMESE) {
+                    com.example.weathernow.presentation.favorites.FavoritesContent(
+                        uiState = state,
+                        onLocationSelected = {},
+                        onRemoveFavorite = {},
+                        onNavigateToAdd = {},
+                        onNavigateBack = {},
+                        onRetry = {}
+                    )
+                }
+            }
+        }
+
+        composeTestRule.onNodeWithText("Không thể cập nhật một số địa điểm. Đang hiển thị dữ liệu có sẵn.").assertExists()
+        composeTestRule.onNodeWithText("Offline mode. Showing cached data from").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Some locations could not be updated. Showing available weather.").assertDoesNotExist()
+    }
+
+    @Test
+    fun favoritesScreen_totalError_vietnamese_rendersLocalizedMessage() {
+        val state = com.example.weathernow.presentation.favorites.FavoritesUiState.Error
+
+        composeTestRule.setContent {
+            WeatherNowTheme {
+                ProvideWeatherLanguage(AppLanguage.VIETNAMESE) {
+                    com.example.weathernow.presentation.favorites.FavoritesContent(
+                        uiState = state,
+                        onLocationSelected = {},
+                        onRemoveFavorite = {},
+                        onNavigateToAdd = {},
+                        onNavigateBack = {},
+                        onRetry = {}
+                    )
+                }
+            }
+        }
+
+        composeTestRule.onNodeWithText("Không thể tải dữ liệu thời tiết").assertExists()
+        composeTestRule.onNodeWithText("Không thể tải thời tiết cho các địa điểm đã lưu. Vui lòng thử lại.").assertExists()
+        composeTestRule.onNodeWithText("Thử lại").assertExists()
+        composeTestRule.onNodeWithText("Unable to load weather data").assertDoesNotExist()
+    }
 }
